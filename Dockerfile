@@ -21,7 +21,7 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install Chromium dependencies for Puppeteer
+# Install Chromium dependencies for Puppeteer and locales for UTF-8
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -40,8 +40,16 @@ RUN apt-get update && apt-get install -y \
     libcups2 \
     libdrm2 \
     libxshmfence1 \
+    locales \
     --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \
+    && locale-gen
+
+# Set UTF-8 locale environment
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 # Set Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
