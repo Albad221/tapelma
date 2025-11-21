@@ -6,14 +6,15 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies for build)
+# Force install ALL dependencies (including devDependencies) regardless of NODE_ENV
+ENV NODE_ENV=development
 RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build application using npx to find nest CLI
-RUN npx nest build
+# Build application
+RUN ./node_modules/.bin/nest build
 
 # Production stage
 FROM node:20-slim
