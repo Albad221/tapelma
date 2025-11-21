@@ -491,11 +491,6 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
       this.logger.log('Editing photo with Gemini 3 Pro Image Preview...');
       this.logger.log(`Job/profession context: ${description}`);
 
-      // Use Gemini 3 Pro Image Preview for image editing (best quality)
-      const imageModel = this.genAI.getGenerativeModel({
-        model: 'gemini-3-pro-image-preview'
-      });
-
       // Determine professional context based on job description
       const promptStyle = this.determinePromptStyle(description);
       this.logger.log(`Using prompt style: ${promptStyle}`);
@@ -508,23 +503,29 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
         ? originalImageBase64.split(',')[1]
         : originalImageBase64;
 
-      // Call Gemini 2.5 Flash Image with the original image and editing instructions
-      const result = await imageModel.generateContent([
-        {
-          text: editingPrompt,
-        },
-        {
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: imageData,
+      // Use the new @google/genai SDK with responseModalities for image generation
+      const response = await this.imageGenAI.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: editingPrompt },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: imageData,
+                },
+              },
+            ],
           },
+        ],
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
         },
-      ]);
-
-      const response = await result.response;
+      });
 
       // Extract the generated image from the response
-      // The image is returned in the response parts as inline_data
       const parts = response.candidates?.[0]?.content?.parts;
 
       if (!parts || parts.length === 0) {
@@ -536,12 +537,16 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
       for (const part of parts) {
         if (part.inlineData?.data) {
           generatedImageBase64 = part.inlineData.data;
+          this.logger.log('Found generated image in response');
           break;
+        }
+        if (part.text) {
+          this.logger.log(`Gemini text response: ${part.text.substring(0, 100)}...`);
         }
       }
 
       if (!generatedImageBase64) {
-        throw new Error('No image data found in response');
+        throw new Error('No image data found in response - model may not support image output');
       }
 
       this.logger.log('Professional CV picture edited successfully with Gemini 3 Pro Image');
