@@ -531,13 +531,26 @@ Respond with a JSON object:
         messages,
         temperature: 0.7,
         response_format: { type: 'json_object' },
+        max_tokens: 1000,
+        timeout: 30000, // 30 second timeout
       });
 
-      const result = JSON.parse(completion.choices[0].message.content || '{}');
+      const rawContent = completion.choices[0].message.content || '{}';
+      this.logger.log(`Raw OpenAI response: ${rawContent.substring(0, 500)}...`);
+
+      let result;
+      try {
+        result = JSON.parse(rawContent);
+      } catch (parseError) {
+        this.logger.error(`Failed to parse JSON response: ${rawContent}`);
+        throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
+      }
+
       this.logger.log(`AI Response: ${JSON.stringify(result)}`);
       return result;
     } catch (error) {
       this.logger.error(`Error in conversation handling: ${error.message}`);
+      this.logger.error(`Error stack: ${error.stack}`);
       return {
         response: language === 'fr'
           ? 'Désolé, une erreur s\'est produite. Pouvez-vous répéter?'
