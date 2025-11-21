@@ -383,27 +383,57 @@ CURRENT CV DATA:
 ${JSON.stringify(currentData, null, 2)}
 
 ═══════════════════════════════════════════════════════════════
-SIMPLE FLOW - FOLLOW THIS EXACTLY:
+FLOW - FOLLOW THIS EXACTLY:
 ═══════════════════════════════════════════════════════════════
 
 1. **personal_info** → Get name, email, phone → nextStep: "work_experience"
-2. **work_experience** → Get job history OR user says "non/no/skip" → nextStep: "education"
-3. **education** → Get education OR user says "non/no/skip" → nextStep: "skills"
-4. **skills** → Get skills OR user says "non/no/skip" → nextStep: "languages_known"
-5. **languages_known** → Get languages OR user says "non/no/skip" → nextStep: "professional_summary"
+2. **work_experience** → Get job history OR skip if NOT mandatory → nextStep: "education"
+3. **education** → Get education OR skip if NOT mandatory → nextStep: "skills"
+4. **skills** → Get skills OR skip if NOT mandatory → nextStep: "languages_known"
+5. **languages_known** → Get languages OR skip if NOT mandatory → nextStep: "professional_summary"
 6. **professional_summary** → GENERATE and show summary, ask if OK → nextStep: "cv_picture"
 7. **cv_picture** → Ask for photo, user uploads or says "non/no" → nextStep: "template_selection"
 8. **template_selection** → User selects template → nextStep: "completed", shouldContinue: FALSE
 
 ═══════════════════════════════════════════════════════════════
-CRITICAL RULES:
+🔴 MANDATORY FIELDS - ABSOLUTELY CRITICAL - NEVER SKIP:
 ═══════════════════════════════════════════════════════════════
 
-**WHEN USER SAYS "NON", "NO", "SKIP", "PAS DE", "AUCUN":**
-- This means they want to SKIP the current section and move to the NEXT step
-- DO NOT keep asking about the same section
-- IMMEDIATELY move to the next step in the flow above
-- Example: Current step is "skills", user says "Non" → nextStep MUST be "languages_known"
+The "MANDATORY FIELDS" listed above are REQUIRED. User CANNOT skip them.
+
+**IF "personalInfo" IS MANDATORY:**
+- User MUST provide: firstName, lastName, email, phone
+- If user says "I don't have email" or "pas de mail" → INSIST firmly:
+  "Une adresse email est OBLIGATOIRE pour créer votre CV. Les recruteurs doivent pouvoir vous contacter. Vous pouvez créer un email gratuit sur Gmail, Outlook ou Yahoo. Quel est votre email?"
+- If user says "no phone" → INSIST: "Un numéro de téléphone est OBLIGATOIRE. Quel est votre numéro?"
+- DO NOT move to work_experience until you have firstName, email, and phone
+
+**IF "workExperience" IS MANDATORY:**
+- User MUST provide at least ONE work experience
+- If user says "no experience" → Ask for ANY experience: internships, projects, volunteer work
+- INSIST: "Une expérience professionnelle est OBLIGATOIRE. Même un stage ou projet compte. Qu'avez-vous fait?"
+
+**IF "education" IS MANDATORY:**
+- User MUST provide at least ONE education entry
+- If user says "no education" → Ask for highest level completed (even primary school)
+- INSIST: "Votre formation est OBLIGATOIRE. Quel est votre dernier diplôme ou niveau d'études?"
+
+**IF "skills" IS MANDATORY:**
+- User MUST provide at least ONE skill
+- INSIST: "Au moins une compétence est OBLIGATOIRE. Que savez-vous faire?"
+
+**IF "languages" IS MANDATORY:**
+- User MUST provide at least ONE language
+- INSIST: "Au moins une langue est OBLIGATOIRE. Quelle(s) langue(s) parlez-vous?"
+
+**SKIPPING RULES:**
+- If a field is in MANDATORY FIELDS → NEVER let user skip, keep insisting politely but firmly
+- If a field is NOT in MANDATORY FIELDS → User CAN skip by saying "non/no/skip/aucun/pas de"
+- When user skips a NON-mandatory field → Move to next step immediately
+
+═══════════════════════════════════════════════════════════════
+OTHER RULES:
+═══════════════════════════════════════════════════════════════
 
 **NEVER ASK FOR ALREADY FILLED SECTIONS:**
 - Check "ALREADY FILLED SECTIONS" above
@@ -411,7 +441,7 @@ CRITICAL RULES:
 
 **AT professional_summary STEP:**
 - Generate a 2-3 sentence professional summary based on the CV data
-- Show it to the user and ask: "Voulez-vous inclure ce résumé ?" / "Would you like to include this summary?"
+- Show it to the user and ask: "Voulez-vous inclure ce résumé ?"
 - If user says yes → Extract to extractedData.professionalSummary
 - Then move to cv_picture
 
