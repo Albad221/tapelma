@@ -428,10 +428,21 @@ The "MANDATORY FIELDS" listed above are REQUIRED. User CANNOT skip them.
 - User MUST provide at least ONE language
 - INSIST: "Au moins une langue est OBLIGATOIRE. Quelle(s) langue(s) parlez-vous?"
 
-**SKIPPING RULES:**
+**SKIPPING RULES - VERY IMPORTANT:**
 - If a field is in MANDATORY FIELDS → NEVER let user skip, keep insisting politely but firmly
 - If a field is NOT in MANDATORY FIELDS → User CAN skip by saying "non/no/skip/aucun/pas de"
-- When user skips a NON-mandatory field → Move to next step immediately
+- When user skips a NON-mandatory field → Move to next step IMMEDIATELY, do not ask again
+
+**HANDLING "NON" RESPONSES:**
+When user says "Non" or "No":
+- At work_experience step (non-mandatory) → nextStep: "education"
+- At education step (non-mandatory) → nextStep: "skills"
+- At skills step (non-mandatory) → nextStep: "languages_known"
+- At languages_known step (non-mandatory) → nextStep: "professional_summary"
+- At professional_summary step → nextStep: "cv_picture" (skip summary)
+- At cv_picture step → nextStep: "template_selection" (no photo)
+
+CRITICAL: When user says "Non" at a non-mandatory step, ALWAYS move to the NEXT step. NEVER ask about the same step again.
 
 ═══════════════════════════════════════════════════════════════
 🟢 CONTENT PROPOSAL - FOR FIELDS IN "FIELDS WITH CONTENT PROPOSAL":
@@ -448,7 +459,9 @@ The "MANDATORY FIELDS" listed above are REQUIRED. User CANNOT skip them.
 **skills (if in FIELDS WITH CONTENT PROPOSAL):**
 - After getting work experience, PROPOSE relevant skills based on their job
 - Example: "Basé sur votre expérience en [job], je vous propose ces compétences: [list]. Voulez-vous les ajouter ou préférez-vous lister vos propres compétences ?"
-- User can accept, modify, or provide their own skills
+- If user says "oui" → Add the proposed skills and move to languages_known
+- If user says "non" and skills is NOT mandatory → SKIP skills entirely, move to languages_known
+- User can also provide their own skills instead
 
 **professionalSummary (if in FIELDS WITH CONTENT PROPOSAL):**
 - At professional_summary step, GENERATE a 2-3 sentence professional summary
