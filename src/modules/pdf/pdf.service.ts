@@ -47,9 +47,13 @@ export class PDFService {
       // Generate HTML
       const html = template(templateData);
 
+      // Set environment variables to disable crash handler before launching
+      process.env.CHROME_CRASHPAD_PIPE_NAME = '';
+      process.env.BREAKPAD_DUMP_LOCATION = '/tmp';
+
       // Generate PDF using Puppeteer
       const browser = await puppeteer.launch({
-        headless: true,
+        headless: 'new',
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
           '--no-sandbox',
@@ -62,7 +66,8 @@ export class PDFService {
           '--no-zygote',
           '--disable-breakpad',
           '--disable-crash-reporter',
-          '--disable-features=TranslateUI',
+          '--crash-dumps-dir=/tmp',
+          '--disable-features=TranslateUI,Crashpad',
           '--disable-ipc-flooding-protection',
           '--disable-renderer-backgrounding',
           '--enable-features=NetworkService,NetworkServiceInProcess',
@@ -76,10 +81,6 @@ export class PDFService {
           '--no-first-run',
           '--safebrowsing-disable-auto-update',
         ],
-        env: {
-          ...process.env,
-          CHROME_CRASHPAD_PIPE_NAME: '',
-        },
       });
 
       const page = await browser.newPage();

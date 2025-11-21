@@ -50,7 +50,10 @@ ENV CHROME_PATH=/usr/bin/chromium
 ENV CHROMIUM_PATH=/usr/bin/chromium
 # Disable crash reporting completely
 ENV CHROME_CRASHPAD_PIPE_NAME=
-ENV BREAKPAD_DUMP_LOCATION=/dev/null
+ENV BREAKPAD_DUMP_LOCATION=/tmp
+
+# Create crash dumps directory with proper permissions (before switching to non-root user)
+RUN mkdir -p /tmp/crashpad && chmod 777 /tmp/crashpad
 
 # Copy package files
 COPY package*.json ./
