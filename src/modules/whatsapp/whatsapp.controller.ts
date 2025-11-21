@@ -179,4 +179,45 @@ export class WhatsAppController {
       return { success: false, message: error.message };
     }
   }
+
+  @Post('test-pdf')
+  @HttpCode(200)
+  async testPdfSend(@Body() payload: { phoneNumber: string }) {
+    try {
+      this.logger.log(`Testing PDF send to: ${payload.phoneNumber}`);
+
+      // Create a simple test PDF buffer (minimal valid PDF)
+      const testPdfContent = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj
+4 0 obj << /Length 44 >> stream
+BT /F1 24 Tf 100 700 Td (Test CV PDF) Tj ET
+endstream endobj
+xref
+0 5
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000214 00000 n
+trailer << /Size 5 /Root 1 0 R >>
+startxref
+307
+%%EOF`;
+
+      const pdfBuffer = Buffer.from(testPdfContent, 'utf-8');
+
+      const success = await this.whatsappService.sendDocumentBuffer(
+        payload.phoneNumber,
+        pdfBuffer,
+        'test-cv.pdf',
+      );
+
+      return { success, message: success ? 'PDF sent!' : 'Failed to send PDF' };
+    } catch (error) {
+      this.logger.error(`Error testing PDF send: ${error.message}`);
+      return { success: false, message: error.message };
+    }
+  }
 }

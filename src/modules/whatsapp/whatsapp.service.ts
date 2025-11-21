@@ -246,6 +246,51 @@ export class WhatsAppService {
     }
   }
 
+  /**
+   * Send a document (PDF, etc.) directly from a buffer
+   * @param phoneNumber - Recipient phone number
+   * @param fileBuffer - File data as Buffer
+   * @param filename - Name of the file (e.g., 'cv.pdf')
+   * @param caption - Optional caption/message
+   * @returns Success status
+   */
+  async sendDocumentBuffer(
+    phoneNumber: string,
+    fileBuffer: Buffer,
+    filename: string,
+    caption?: string,
+  ): Promise<boolean> {
+    try {
+      this.logger.log(`Sending document ${filename} to ${phoneNumber} (${fileBuffer.length} bytes)`);
+
+      const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
+
+      // Create a Blob from the buffer for FormData
+      const blob = new Blob([fileBuffer], { type: 'application/pdf' });
+
+      const formData = new FormData();
+      formData.append('file', blob, filename);
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, formData, {
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            // FormData will set Content-Type automatically with boundary
+          },
+        }),
+      );
+
+      this.logger.log(`Document sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
+      return response.data.result === true || response.data.ok === true;
+    } catch (error) {
+      this.logger.error(`Error sending document to ${phoneNumber}: ${error.message}`);
+      if (error.response) {
+        this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
+      }
+      return false;
+    }
+  }
+
   async sendTemplateMessage(
     phoneNumber: string,
     templateName: string,
