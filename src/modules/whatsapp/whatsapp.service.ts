@@ -17,10 +17,17 @@ export class WhatsAppService {
   ) {
     this.apiEndpoint = this.configService.get<string>('WATI_API_URL') || '';
     this.accessToken = this.configService.get<string>('WATI_API_TOKEN') || '';
+
+    // Log configuration on startup
+    this.logger.log(`WATI API URL configured: ${this.apiEndpoint ? 'YES (' + this.apiEndpoint + ')' : 'NO'}`);
+    this.logger.log(`WATI API Token configured: ${this.accessToken ? 'YES (length: ' + this.accessToken.length + ')' : 'NO'}`);
+
     // Enable test mode if WATI credentials are not configured
     this.isTestMode = !this.accessToken || this.accessToken === 'your-wati-access-token';
     if (this.isTestMode) {
       this.logger.log('🧪 Test mode enabled - messages will be stored in memory instead of sent via WhatsApp');
+    } else {
+      this.logger.log('✅ Production mode - messages will be sent via WATI WhatsApp API');
     }
   }
 
@@ -76,6 +83,12 @@ export class WhatsAppService {
       this.logger.error(
         `Error sending message to ${phoneNumber}: ${error.message}`,
       );
+      // Log more details for debugging
+      if (error.response) {
+        this.logger.error(`Response status: ${error.response.status}`);
+        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+      }
+      this.logger.error(`URL used: ${this.apiEndpoint}/api/v1/sendSessionMessage/${phoneNumber}`);
       return false;
     }
   }
