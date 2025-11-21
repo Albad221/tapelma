@@ -1227,14 +1227,14 @@ export class ConversationService {
             : `✅ Perfect! Your photo has been added to your CV.\n\n${analysis.reason}\n\nNow let's choose your CV template.`,
         );
 
-        // Move to template selection
+        // Move to template selection and show templates directly
         session.currentStep = ConversationStep.TEMPLATE_SELECTION;
         await this.userService.updateSession(session.id, {
           currentStep: ConversationStep.TEMPLATE_SELECTION,
         });
 
-        // Trigger template selection conversation
-        await this.handleUserMessage(phoneNumber, 'show templates');
+        // Show template options directly without going through OpenAI again
+        await this.proceedToTemplateSelection(phoneNumber, session);
       } else {
         // Image is not suitable - automatically generate a professional one with Gemini
         this.logger.log('Image is not suitable for CV, generating professional one with Gemini...');
@@ -1284,14 +1284,14 @@ export class ConversationService {
               : `✅ Perfect! I've generated a professional photo for your CV.\n\nNow let's choose your CV template.`,
           );
 
-          // Move to template selection
+          // Move to template selection and show templates directly
           session.currentStep = ConversationStep.TEMPLATE_SELECTION;
           await this.userService.updateSession(session.id, {
             currentStep: ConversationStep.TEMPLATE_SELECTION,
           });
 
-          // Trigger template selection conversation
-          await this.handleUserMessage(phoneNumber, 'show templates');
+          // Show template options directly without going through OpenAI again
+          await this.proceedToTemplateSelection(phoneNumber, session);
 
         } catch (generationError) {
           this.logger.error(`Failed to generate professional image: ${generationError.message}`);
@@ -1310,8 +1310,8 @@ export class ConversationService {
             currentStep: ConversationStep.TEMPLATE_SELECTION,
           });
 
-          // Trigger template selection conversation
-          await this.handleUserMessage(phoneNumber, 'show templates');
+          // Show template options directly without going through OpenAI again
+          await this.proceedToTemplateSelection(phoneNumber, session);
         }
       }
     } catch (error) {
