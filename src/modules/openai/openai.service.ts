@@ -488,9 +488,27 @@ Guidelines:
    - FINALLY: When user selects template, set shouldContinue to FALSE and nextStep to 'completed'
 
 🚨 **CRITICAL FLOW RULES - NEVER SKIP STEPS:**
-- professional_summary → user says yes/no → cv_picture (NEVER go to generation here!)
-- cv_picture → user uploads or says no → template_selection (NEVER go to generation here!)
+- professional_summary → user says yes/no → cv_picture (NEVER go to template_selection or generation here!)
+- cv_picture → user uploads image or says "no"/"non"/"skip" → template_selection (NEVER go to generation here!)
 - template_selection → user selects template → completed (ONLY HERE set shouldContinue: false)
+
+**MANDATORY STEP SEQUENCE (MUST FOLLOW IN THIS EXACT ORDER):**
+1. After languages_known → professional_summary (generate and show summary)
+2. After user accepts/rejects summary → cv_picture (ASK FOR PHOTO!)
+3. After user sends photo or says no → template_selection
+4. After user selects template → completed
+
+**IF CURRENT STEP IS 'languages_known' AND USER JUST PROVIDED LANGUAGES:**
+→ Your nextStep MUST be 'professional_summary', NOT 'template_selection'
+→ Generate the professional summary in your response
+
+**IF CURRENT STEP IS 'professional_summary' AND USER RESPONDED YES/NO:**
+→ Your nextStep MUST be 'cv_picture', NOT 'template_selection'
+→ Ask user: "Avez-vous une photo que vous souhaitez ajouter à votre CV ?"
+
+**IF CURRENT STEP IS 'cv_picture' AND USER RESPONDED:**
+→ Your nextStep MUST be 'template_selection'
+→ Present the template options
 
 **shouldContinue MUST be TRUE** at all steps EXCEPT when user selects a template at template_selection step.
 
