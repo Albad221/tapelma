@@ -19,8 +19,8 @@ export class WhatsAppController {
   private processingMessages: Set<string> = new Set();
   // Rate limiter: track last response time per user (prevents spam)
   private lastResponseTime: Map<string, number> = new Map();
-  // Minimum time between responses to same user (3 seconds)
-  private readonly MIN_RESPONSE_INTERVAL = 3000;
+  // Minimum time between responses to same user (5 seconds)
+  private readonly MIN_RESPONSE_INTERVAL = 5000;
   // Cleanup old entries every 5 minutes
   private readonly MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -80,7 +80,7 @@ export class WhatsAppController {
         return { status: 'processing' };
       }
 
-      // Rate limiting: check if we responded to this user recently
+      // Rate limiting: check if we responded to this user recently (increased to 5 seconds)
       const lastResponse = this.lastResponseTime.get(message.from);
       const now = Date.now();
       if (lastResponse && (now - lastResponse) < this.MIN_RESPONSE_INTERVAL) {
@@ -88,8 +88,16 @@ export class WhatsAppController {
         return { status: 'rate_limited' };
       }
 
-      // Mark as processing
+      // Per-user lock: prevent processing multiple messages from same user concurrently
+      const userLockKey = `user-${message.from}`;
+      if (this.processingMessages.has(userLockKey)) {
+        this.logger.warn(`User ${message.from} already has a message being processed, skipping`);
+        return { status: 'user_locked' };
+      }
+
+      // Mark as processing (both message-level and user-level)
       this.processingMessages.add(dedupeKey);
+      this.processingMessages.add(userLockKey);
 
       try {
         // Mark message as read
@@ -120,8 +128,9 @@ export class WhatsAppController {
 
         return { status: 'processed' };
       } finally {
-        // Remove from processing set
+        // Remove from processing sets (both message-level and user-level)
         this.processingMessages.delete(dedupeKey);
+        this.processingMessages.delete(`user-${message.from}`);
       }
     } catch (error) {
       this.logger.error(`Error handling webhook: ${error.message}`);
