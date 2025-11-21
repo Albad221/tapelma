@@ -265,8 +265,9 @@ export class WhatsAppService {
 
       const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
 
-      // Create a Blob from the buffer for FormData
-      const blob = new Blob([fileBuffer], { type: 'application/pdf' });
+      // Create a Blob from the buffer for FormData (convert Buffer to Uint8Array for TypeScript compatibility)
+      const uint8Array = new Uint8Array(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.length);
+      const blob = new Blob([uint8Array], { type: 'application/pdf' });
 
       const formData = new FormData();
       formData.append('file', blob, filename);
