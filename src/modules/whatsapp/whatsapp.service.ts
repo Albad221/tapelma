@@ -62,17 +62,16 @@ export class WhatsAppService {
         return true;
       }
 
-      const url = `${this.apiEndpoint}/api/v1/sendSessionMessage/${phoneNumber}`;
-      const payload = {
-        messageText: message,
-      };
+      // WATI API expects messageText as a query parameter, not in the body
+      const encodedMessage = encodeURIComponent(message);
+      const url = `${this.apiEndpoint}/api/v1/sendSessionMessage/${phoneNumber}?messageText=${encodedMessage}`;
 
       const response = await firstValueFrom(
-        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+        this.httpService.post(url, {}, { headers: this.getHeaders() }),
       );
 
-      this.logger.log(`Message sent to ${phoneNumber}`);
-      return response.data.result === true;
+      this.logger.log(`Message sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
+      return response.data.ok === true || response.data.result === 'success';
     } catch (error) {
       this.logger.error(
         `Error sending message to ${phoneNumber}: ${error.message}`,
