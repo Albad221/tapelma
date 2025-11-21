@@ -26,6 +26,7 @@ export class WhatsAppController {
   ) {
     try {
       this.logger.log('Received WhatsApp webhook');
+      this.logger.log(`Payload: ${JSON.stringify(payload, null, 2)}`);
 
       // Validate webhook signature if needed
       // const isValid = this.whatsappService.validateWebhookSignature(

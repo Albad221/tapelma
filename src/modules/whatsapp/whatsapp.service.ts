@@ -299,14 +299,22 @@ export class WhatsAppService {
     mediaUrl?: string;
   } | null {
     try {
+      this.logger.log(`Parsing payload - waId: ${payload.waId}, text: ${payload.text}, type: ${payload.type}, owner: ${payload.owner}, eventType: ${payload.eventType}`);
+
+      // Skip messages sent by ourselves (owner: true means outgoing)
+      if (payload.owner === true) {
+        this.logger.log('Skipping outgoing message (owner: true)');
+        return null;
+      }
+
       // WATI webhook payload structure - text messages
       if (payload.waId && payload.text) {
         return {
           from: payload.waId,
           text: payload.text,
-          messageId: payload.id || '',
+          messageId: payload.id || payload.whatsappMessageId || '',
           messageType: payload.type || 'text',
-          timestamp: payload.timestamp || Date.now(),
+          timestamp: parseInt(payload.timestamp) || Date.now(),
           type: payload.type,
         };
       }
@@ -316,27 +324,28 @@ export class WhatsAppService {
         return {
           from: payload.waId,
           text: '',
-          messageId: payload.id || '',
+          messageId: payload.id || payload.whatsappMessageId || '',
           messageType: 'image',
-          timestamp: payload.timestamp || Date.now(),
+          timestamp: parseInt(payload.timestamp) || Date.now(),
           type: 'image',
-          mediaId: payload.mediaId,
-          mediaUrl: payload.mediaUrl,
+          mediaId: payload.data || payload.mediaId,
+          mediaUrl: payload.sourceUrl || payload.mediaUrl,
         };
       }
 
       // Handle button/list responses
-      if (payload.waId && payload.data) {
+      if (payload.waId && (payload.data || payload.listReply || payload.buttonReply)) {
+        const responseData = payload.listReply || payload.buttonReply || payload.data;
         return {
           from: payload.waId,
-          text: payload.data.title || payload.data.id || payload.data,
-          messageId: payload.id || '',
+          text: responseData?.title || responseData?.id || payload.text || '',
+          messageId: payload.id || payload.whatsappMessageId || '',
           messageType: 'interactive',
-          timestamp: payload.timestamp || Date.now(),
+          timestamp: parseInt(payload.timestamp) || Date.now(),
         };
       }
 
-      this.logger.warn('Unrecognized message format');
+      this.logger.warn(`Unrecognized message format - keys: ${Object.keys(payload).join(', ')}`);
       return null;
     } catch (error) {
       this.logger.error(`Error parsing incoming message: ${error.message}`);
