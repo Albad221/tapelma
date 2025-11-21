@@ -53,7 +53,7 @@ export class PDFService {
 
       // Generate PDF using Puppeteer
       const browser = await puppeteer.launch({
-        headless: 'new',
+        headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
           '--no-sandbox',
