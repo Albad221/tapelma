@@ -1,22 +1,22 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies (including devDependencies for build)
 RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build application
-RUN npm run build
+# Build application using npx to find nest CLI
+RUN npx nest build
 
 # Production stage
-FROM node:18-slim
+FROM node:20-slim
 
 WORKDIR /app
 
