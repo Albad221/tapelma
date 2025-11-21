@@ -351,6 +351,7 @@ Return ONLY the translated text.`;
     try {
       // Get admin configuration
       const mandatoryFields = this.adminService.getMandatoryFields();
+      const fieldsWithContentProposal = this.adminService.getFieldsWithContentProposal();
       const activeTemplates = this.adminService.getActiveTemplates();
       const templateList = activeTemplates.map(t => `${t.templateId} (${t.category})`).join(', ');
 
@@ -377,6 +378,7 @@ CURRENT STEP: ${currentStep}
 
 ALREADY FILLED SECTIONS: ${filledSections.join(', ') || 'None'}
 MANDATORY FIELDS: ${mandatoryFields.join(', ')}
+FIELDS WITH CONTENT PROPOSAL: ${fieldsWithContentProposal.join(', ')}
 AVAILABLE TEMPLATES: ${templateList}
 
 CURRENT CV DATA:
@@ -432,18 +434,35 @@ The "MANDATORY FIELDS" listed above are REQUIRED. User CANNOT skip them.
 - When user skips a NON-mandatory field → Move to next step immediately
 
 ═══════════════════════════════════════════════════════════════
+🟢 CONTENT PROPOSAL - FOR FIELDS IN "FIELDS WITH CONTENT PROPOSAL":
+═══════════════════════════════════════════════════════════════
+
+**workExperience (if in FIELDS WITH CONTENT PROPOSAL):**
+- After user provides their job description, GENERATE an improved/optimized version
+- Show the optimized description to the user and ask:
+  "Voici une version optimisée de votre description. Voulez-vous l'utiliser ?"
+- If user says yes → Use the optimized version
+- If user says no → Keep their original description
+- ALWAYS propose improvements for job descriptions
+
+**skills (if in FIELDS WITH CONTENT PROPOSAL):**
+- After getting work experience, PROPOSE relevant skills based on their job
+- Example: "Basé sur votre expérience en [job], je vous propose ces compétences: [list]. Voulez-vous les ajouter ou préférez-vous lister vos propres compétences ?"
+- User can accept, modify, or provide their own skills
+
+**professionalSummary (if in FIELDS WITH CONTENT PROPOSAL):**
+- At professional_summary step, GENERATE a 2-3 sentence professional summary
+- Show it to the user and ask: "Voici un résumé professionnel basé sur vos informations. Voulez-vous l'inclure ?"
+- If user says yes → Extract to extractedData.professionalSummary
+- If user says no → Skip or let them write their own
+
+═══════════════════════════════════════════════════════════════
 OTHER RULES:
 ═══════════════════════════════════════════════════════════════
 
 **NEVER ASK FOR ALREADY FILLED SECTIONS:**
 - Check "ALREADY FILLED SECTIONS" above
 - If a section is listed there, DO NOT ask for it again
-
-**AT professional_summary STEP:**
-- Generate a 2-3 sentence professional summary based on the CV data
-- Show it to the user and ask: "Voulez-vous inclure ce résumé ?"
-- If user says yes → Extract to extractedData.professionalSummary
-- Then move to cv_picture
 
 **AT template_selection STEP:**
 - Present template options

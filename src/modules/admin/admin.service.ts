@@ -21,36 +21,49 @@ export class AdminService {
         {
           fieldName: 'personalInfo',
           isMandatory: true,
+          shouldProposeContent: false,
           label: 'Personal Information',
           description: 'Name, email, phone, location',
         },
         {
           fieldName: 'workExperience',
           isMandatory: false,
+          shouldProposeContent: true, // Bot proposes to optimize job descriptions
           label: 'Work Experience',
           description: 'Professional work history',
         },
         {
           fieldName: 'education',
           isMandatory: false,
+          shouldProposeContent: false,
           label: 'Education',
           description: 'Academic background and degrees',
         },
         {
           fieldName: 'skills',
           isMandatory: false,
+          shouldProposeContent: true, // Bot can propose skills based on job
           label: 'Skills',
           description: 'Technical and soft skills',
         },
         {
           fieldName: 'languages',
           isMandatory: false,
+          shouldProposeContent: false,
           label: 'Languages',
           description: 'Languages known',
         },
         {
+          fieldName: 'professionalSummary',
+          isMandatory: false,
+          shouldProposeContent: true, // Bot generates and proposes summary
+          label: 'Professional Summary',
+          description: 'Brief professional profile summary',
+        },
+        {
           fieldName: 'certifications',
           isMandatory: false,
+          shouldProposeContent: false,
           label: 'Certifications',
           description: 'Professional certifications',
         },
@@ -91,6 +104,17 @@ export class AdminService {
   isFieldMandatory(fieldName: string): boolean {
     const field = this.cvConfig.fields.find(f => f.fieldName === fieldName);
     return field ? field.isMandatory : false;
+  }
+
+  shouldProposeContent(fieldName: string): boolean {
+    const field = this.cvConfig.fields.find(f => f.fieldName === fieldName);
+    return field ? !!field.shouldProposeContent : false;
+  }
+
+  getFieldsWithContentProposal(): string[] {
+    return this.cvConfig.fields
+      .filter(field => field.shouldProposeContent)
+      .map(field => field.fieldName);
   }
 
   resetToDefaults(): CVConfigDto {

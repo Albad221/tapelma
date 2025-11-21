@@ -7,6 +7,10 @@ export class CVFieldConfig {
   @IsBoolean()
   isMandatory: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  shouldProposeContent?: boolean;
+
   @IsString()
   @IsOptional()
   label?: string;
