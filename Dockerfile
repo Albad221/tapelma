@@ -48,9 +48,9 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
 ENV CHROMIUM_PATH=/usr/bin/chromium
-
-# Create required directories for Chromium
-RUN mkdir -p /tmp/.chromium-crashpad-database
+# Disable crash reporting completely
+ENV CHROME_CRASHPAD_PIPE_NAME=
+ENV BREAKPAD_DUMP_LOCATION=/dev/null
 
 # Copy package files
 COPY package*.json ./

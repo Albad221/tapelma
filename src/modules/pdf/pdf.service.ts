@@ -62,7 +62,24 @@ export class PDFService {
           '--no-zygote',
           '--disable-breakpad',
           '--disable-crash-reporter',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--disable-renderer-backgrounding',
+          '--enable-features=NetworkService,NetworkServiceInProcess',
+          '--force-color-profile=srgb',
+          '--hide-scrollbars',
+          '--mute-audio',
+          '--disable-background-networking',
+          '--disable-default-apps',
+          '--disable-sync',
+          '--metrics-recording-only',
+          '--no-first-run',
+          '--safebrowsing-disable-auto-update',
         ],
+        env: {
+          ...process.env,
+          CHROME_CRASHPAD_PIPE_NAME: '',
+        },
       });
 
       const page = await browser.newPage();
