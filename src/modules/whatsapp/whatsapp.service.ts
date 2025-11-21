@@ -1,0 +1,416 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+
+@Injectable()
+export class WhatsAppService {
+  private readonly logger = new Logger(WhatsAppService.name);
+  private readonly apiEndpoint: string;
+  private readonly accessToken: string;
+  private testMessages: Map<string, Array<{text: string, timestamp: Date}>> = new Map();
+  private isTestMode: boolean;
+
+  constructor(
+    private configService: ConfigService,
+    private httpService: HttpService,
+  ) {
+    this.apiEndpoint = this.configService.get<string>('WATI_API_ENDPOINT') || '';
+    this.accessToken = this.configService.get<string>('WATI_ACCESS_TOKEN') || '';
+    // Enable test mode if WATI credentials are not configured
+    this.isTestMode = !this.accessToken || this.accessToken === 'your-wati-access-token';
+    if (this.isTestMode) {
+      this.logger.log('🧪 Test mode enabled - messages will be stored in memory instead of sent via WhatsApp');
+    }
+  }
+
+  getTestMessages(phoneNumber: string): Array<{text: string, timestamp: Date}> {
+    this.logger.log(`Getting test messages for ${phoneNumber}. Available keys: ${Array.from(this.testMessages.keys()).join(', ')}`);
+    return this.testMessages.get(phoneNumber) || [];
+  }
+
+  clearTestMessages(phoneNumber: string): void {
+    this.testMessages.delete(phoneNumber);
+  }
+
+  private addTestMessage(phoneNumber: string, text: string): void {
+    if (!this.testMessages.has(phoneNumber)) {
+      this.testMessages.set(phoneNumber, []);
+    }
+    this.testMessages.get(phoneNumber)!.push({
+      text,
+      timestamp: new Date()
+    });
+  }
+
+  private getHeaders() {
+    return {
+      Authorization: `Bearer ${this.accessToken}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  async sendTextMessage(
+    phoneNumber: string,
+    message: string,
+  ): Promise<boolean> {
+    try {
+      // In test mode, just store the message
+      if (this.isTestMode) {
+        this.addTestMessage(phoneNumber, message);
+        this.logger.log(`[TEST MODE] Message queued for ${phoneNumber}: ${message.substring(0, 50)}...`);
+        return true;
+      }
+
+      const url = `${this.apiEndpoint}/api/v1/sendSessionMessage/${phoneNumber}`;
+      const payload = {
+        messageText: message,
+      };
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      this.logger.log(`Message sent to ${phoneNumber}`);
+      return response.data.result === true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending message to ${phoneNumber}: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
+  async sendInteractiveButtons(
+    phoneNumber: string,
+    bodyText: string,
+    buttons: { id: string; text: string }[],
+    headerText?: string,
+    footerText?: string,
+  ): Promise<boolean> {
+    try {
+      // In test mode, convert to text message with numbered options
+      if (this.isTestMode) {
+        const fallbackText = `${headerText ? headerText + '\n\n' : ''}${bodyText}\n\n${buttons.map((btn, idx) => `${idx + 1}. ${btn.text}`).join('\n')}${footerText ? '\n\n' + footerText : ''}`;
+        return await this.sendTextMessage(phoneNumber, fallbackText);
+      }
+
+      const url = `${this.apiEndpoint}/api/v1/sendInteractiveButtonsMessage`;
+
+      // WATI format for interactive buttons
+      const formattedButtons = buttons.map((btn) => ({
+        type: 'reply',
+        reply: {
+          id: btn.id,
+          title: btn.text,
+        },
+      }));
+
+      const payload = {
+        receiverWhatsappNumber: phoneNumber,
+        header: headerText ? { type: 'text', text: headerText } : undefined,
+        body: {
+          text: bodyText,
+        },
+        footer: footerText ? { text: footerText } : undefined,
+        action: {
+          buttons: formattedButtons,
+        },
+      };
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      this.logger.log(`Interactive buttons sent to ${phoneNumber}`);
+      return response.data.result === true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending interactive buttons to ${phoneNumber}: ${error.message}`,
+      );
+      // Fallback to text message
+      const fallbackText = `${bodyText}\n\n${buttons.map((btn, idx) => `${idx + 1}. ${btn.text}`).join('\n')}`;
+      return await this.sendTextMessage(phoneNumber, fallbackText);
+    }
+  }
+
+  async sendListMessage(
+    phoneNumber: string,
+    bodyText: string,
+    buttonText: string,
+    sections: {
+      title: string;
+      rows: { id: string; title: string; description?: string }[];
+    }[],
+    headerText?: string,
+    footerText?: string,
+  ): Promise<boolean> {
+    try {
+      const url = `${this.apiEndpoint}/api/v1/sendInteractiveListMessage`;
+
+      const payload = {
+        receiverWhatsappNumber: phoneNumber,
+        header: headerText ? { type: 'text', text: headerText } : undefined,
+        body: {
+          text: bodyText,
+        },
+        footer: footerText ? { text: footerText } : undefined,
+        action: {
+          button: buttonText,
+          sections: sections,
+        },
+      };
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      this.logger.log(`List message sent to ${phoneNumber}`);
+      return response.data.result === true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending list message to ${phoneNumber}: ${error.message}`,
+      );
+      // Fallback to text message
+      let fallbackText = bodyText + '\n\n';
+      sections.forEach((section) => {
+        fallbackText += `${section.title}\n`;
+        section.rows.forEach((row, idx) => {
+          fallbackText += `${idx + 1}. ${row.title}\n`;
+        });
+        fallbackText += '\n';
+      });
+      return await this.sendTextMessage(phoneNumber, fallbackText);
+    }
+  }
+
+  async sendMediaMessage(
+    phoneNumber: string,
+    mediaUrl: string,
+    mediaType: 'image' | 'document' | 'video',
+    caption?: string,
+    filename?: string,
+  ): Promise<boolean> {
+    try {
+      const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
+
+      const formData = new FormData();
+      formData.append('file', mediaUrl);
+      if (caption) formData.append('caption', caption);
+      if (filename) formData.append('filename', filename);
+
+      // For document type, we need to specify the filename
+      if (mediaType === 'document' && filename) {
+        const response = await firstValueFrom(
+          this.httpService.post(url, formData, {
+            headers: {
+              Authorization: `Bearer ${this.accessToken}`,
+            },
+          }),
+        );
+
+        this.logger.log(`Media message sent to ${phoneNumber}`);
+        return response.data.result === true;
+      }
+
+      // For direct URL media
+      const payload = {
+        url: mediaUrl,
+        caption: caption || '',
+        filename: filename,
+      };
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      this.logger.log(`Media message sent to ${phoneNumber}`);
+      return response.data.result === true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending media message to ${phoneNumber}: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
+  async sendTemplateMessage(
+    phoneNumber: string,
+    templateName: string,
+    parameters: string[],
+    broadcastName?: string,
+  ): Promise<boolean> {
+    try {
+      const url = `${this.apiEndpoint}/api/v1/sendTemplateMessage`;
+
+      const payload = {
+        whatsappNumber: phoneNumber,
+        template_name: templateName,
+        broadcast_name: broadcastName || templateName,
+        parameters: parameters.map((param, idx) => ({
+          name: `${idx + 1}`,
+          value: param,
+        })),
+      };
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      this.logger.log(
+        `Template message ${templateName} sent to ${phoneNumber}`,
+      );
+      return response.data.result === true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending template message to ${phoneNumber}: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
+  async markMessageAsRead(messageId: string): Promise<boolean> {
+    try {
+      const url = `${this.apiEndpoint}/api/v1/markMessageRead`;
+
+      const payload = {
+        messageId: messageId,
+      };
+
+      await firstValueFrom(
+        this.httpService.post(url, payload, { headers: this.getHeaders() }),
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(`Error marking message as read: ${error.message}`);
+      return false;
+    }
+  }
+
+  parseIncomingMessage(payload: any): {
+    from: string;
+    text: string;
+    messageId: string;
+    messageType: string;
+    timestamp: number;
+    type?: string;
+    mediaId?: string;
+    mediaUrl?: string;
+  } | null {
+    try {
+      // WATI webhook payload structure - text messages
+      if (payload.waId && payload.text) {
+        return {
+          from: payload.waId,
+          text: payload.text,
+          messageId: payload.id || '',
+          messageType: payload.type || 'text',
+          timestamp: payload.timestamp || Date.now(),
+          type: payload.type,
+        };
+      }
+
+      // Handle image messages
+      if (payload.waId && payload.type === 'image') {
+        return {
+          from: payload.waId,
+          text: '',
+          messageId: payload.id || '',
+          messageType: 'image',
+          timestamp: payload.timestamp || Date.now(),
+          type: 'image',
+          mediaId: payload.mediaId,
+          mediaUrl: payload.mediaUrl,
+        };
+      }
+
+      // Handle button/list responses
+      if (payload.waId && payload.data) {
+        return {
+          from: payload.waId,
+          text: payload.data.title || payload.data.id || payload.data,
+          messageId: payload.id || '',
+          messageType: 'interactive',
+          timestamp: payload.timestamp || Date.now(),
+        };
+      }
+
+      this.logger.warn('Unrecognized message format');
+      return null;
+    } catch (error) {
+      this.logger.error(`Error parsing incoming message: ${error.message}`);
+      return null;
+    }
+  }
+
+  validateWebhookSignature(payload: string, signature: string): boolean {
+    try {
+      const webhookSecret = this.configService.get<string>(
+        'WATI_WEBHOOK_SECRET',
+      );
+      // Implement HMAC validation if WATI provides webhook signatures
+      // For now, return true if webhook secret matches
+      return true;
+    } catch (error) {
+      this.logger.error(`Error validating webhook: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Download an image from WhatsApp media URL
+   * @param mediaId - WhatsApp media ID
+   * @param mediaUrl - Direct media URL if available
+   * @returns Buffer containing the image data
+   */
+  async downloadImage(mediaId: string, mediaUrl?: string): Promise<Buffer> {
+    try {
+      this.logger.log(`Downloading image with media ID: ${mediaId}`);
+
+      const accessToken = this.configService.get<string>('WATI_ACCESS_TOKEN');
+      const endpoint = this.configService.get<string>('WATI_API_ENDPOINT');
+
+      // If direct media URL is provided, use it
+      if (mediaUrl) {
+        const response = await this.httpService.axiosRef.get(mediaUrl, {
+          responseType: 'arraybuffer',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        return Buffer.from(response.data);
+      }
+
+      // Otherwise, fetch media URL from WATI API using media ID
+      const mediaInfoResponse = await this.httpService.axiosRef.get(
+        `${endpoint}/api/v1/getMedia/${mediaId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      const downloadUrl = mediaInfoResponse.data.url || mediaInfoResponse.data.media_url;
+
+      if (!downloadUrl) {
+        throw new Error('No download URL found for media');
+      }
+
+      // Download the actual media file
+      const imageResponse = await this.httpService.axiosRef.get(downloadUrl, {
+        responseType: 'arraybuffer',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      this.logger.log('Image downloaded successfully');
+      return Buffer.from(imageResponse.data);
+    } catch (error) {
+      this.logger.error(`Error downloading image: ${error.message}`);
+      throw error;
+    }
+  }
+}

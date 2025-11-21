@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{personalInfo.fullName}} - CV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            line-height: 1.6;
+            background: white;
+        }
+
+        .container {
+            display: flex;
+            min-height: 297mm;
+            width: 210mm;
+        }
+
+        /* Left Sidebar - Dark Blue */
+        .left-sidebar {
+            width: 40%;
+            background: #1e3a5f;
+            color: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-image {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .profile-section {
+            padding: 40px 35px;
+            flex-grow: 1;
+        }
+
+        .name {
+            font-size: 48px;
+            font-weight: 700;
+            color: #4dd9d9;
+            text-transform: uppercase;
+            line-height: 1.1;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .job-title {
+            font-size: 18px;
+            font-weight: 400;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 40px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 35px;
+        }
+
+        .sidebar-heading {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            letter-spacing: 1.5px;
+        }
+
+        .summary-text {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #e8f4f8;
+        }
+
+        .competencies-list,
+        .contact-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .competencies-list li {
+            font-size: 13px;
+            margin-bottom: 10px;
+            padding-left: 15px;
+            position: relative;
+            color: #e8f4f8;
+        }
+
+        .competencies-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #4dd9d9;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .contact-list li {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #e8f4f8;
+            word-wrap: break-word;
+        }
+
+        /* Right Content Area - White */
+        .right-content {
+            width: 60%;
+            padding: 50px 40px;
+            background: white;
+        }
+
+        .section {
+            margin-bottom: 35px;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            background: #1e3a5f;
+            color: white;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #4dd9d9;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0;
+        }
+
+        .job-entry,
+        .education-entry,
+        .reference-entry {
+            margin-bottom: 25px;
+        }
+
+        .entry-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 5px;
+        }
+
+        .entry-subtitle {
+            font-size: 13px;
+            color: #4dd9d9;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .entry-date {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .entry-description {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .entry-description ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .entry-description li {
+            margin: 5px 0;
+        }
+
+        .reference-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 3px;
+        }
+
+        .reference-position {
+            font-size: 12px;
+            color: #4dd9d9;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .reference-contact {
+            font-size: 11px;
+            color: #666;
+        }
+
+        @media print {
+            .container {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar -->
+        <div class="left-sidebar">
+            {{#if hasCVPicture}}
+            <img src="{{cvPictureUrl}}" alt="Profile Picture" class="profile-image">
+            {{else if personalInfo.profileImage}}
+            <img src="{{personalInfo.profileImage}}" alt="Profile" class="profile-image">
+            {{else}}
+            <div class="profile-image" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a5080 100%);"></div>
+            {{/if}}
+
+            <div class="profile-section">
+                <h1 class="name">{{personalInfo.firstName}}<br>{{personalInfo.lastName}}</h1>
+                {{#if workExperiences.[0].position}}
+                <p class="job-title">{{workExperiences.[0].position}}</p>
+                {{/if}}
+
+                {{#if personalInfo.summary}}
+                <div class="sidebar-section">
+                    <h2 class="sidebar-heading">Resumen de Carrera</h2>
+                    <p class="summary-text">{{personalInfo.summary}}</p>
+                </div>
+                {{/if}}
+
+                {{#if hasSkills}}
+                <div class="sidebar-section">
+                    <h2 class="sidebar-heading">Competencias</h2>
+                    <ul class="competencies-list">
+                        {{#each skills}}
+                        <li>{{this.name}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                {{/if}}
+
+                <div class="sidebar-section">
+                    <h2 class="sidebar-heading">Contacto</h2>
+                    <ul class="contact-list">
+                        {{#if personalInfo.email}}
+                        <li>Correo electrónico: {{personalInfo.email}}</li>
+                        {{/if}}
+                        {{#if personalInfo.phone}}
+                        <li>Teléfono: {{personalInfo.phone}}</li>
+                        {{/if}}
+                        {{#if personalInfo.portfolio}}
+                        <li>Sitio web: {{personalInfo.portfolio}}</li>
+                        {{/if}}
+                        {{#if personalInfo.location}}
+                        <li>Dirección: {{personalInfo.location}}</li>
+                        {{/if}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Content -->
+        <div class="right-content">
+            {{#if hasProfessionalSummary}}
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Résumé Professionnel</h2>
+                </div>
+                <div class="entry-description">
+                    <p>{{professionalSummary}}</p>
+                </div>
+            </div>
+            {{/if}}
+
+            {{#if hasWorkExperience}}
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Resumen Laboral</h2>
+                </div>
+                {{#each workExperiences}}
+                <div class="job-entry">
+                    <h3 class="entry-title">{{this.position}}</h3>
+                    <p class="entry-subtitle">{{this.companyName}}{{#if this.location}} | {{this.location}}{{/if}}</p>
+                    <p class="entry-date">{{this.duration}}</p>
+                    {{#if this.description}}
+                    <div class="entry-description">
+                        <p>{{this.description}}</p>
+                    </div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            {{#if hasEducation}}
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Historial Académico</h2>
+                </div>
+                {{#each education}}
+                <div class="education-entry">
+                    <h3 class="entry-title">{{this.degreeField}}</h3>
+                    <p class="entry-subtitle">{{this.institution}}</p>
+                    <p class="entry-date">{{this.duration}}{{#if this.gpa}} | Nota media: {{this.gpa}}{{/if}}</p>
+                    {{#if this.description}}
+                    <div class="entry-description">
+                        <p>{{this.description}}</p>
+                    </div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            {{#if hasCertifications}}
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Certificaciones</h2>
+                </div>
+                {{#each certifications}}
+                <div class="education-entry">
+                    <h3 class="entry-title">{{this.name}}</h3>
+                    {{#if this.issuingOrganization}}
+                    <p class="entry-subtitle">{{this.issuingOrganization}}</p>
+                    {{/if}}
+                    {{#if this.duration}}
+                    <p class="entry-date">{{this.duration}}</p>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Referencias Laborales</h2>
+                </div>
+                <div class="reference-entry">
+                    <p class="reference-name">Disponibles a solicitud</p>
+                    <p class="reference-contact">Referencias profesionales disponibles previa solicitud</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Template Gallery - SamaCV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .category-filters {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 12px 28px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .template-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .template-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .template-preview {
+            height: 400px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #667eea;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .template-preview::before {
+            content: 'CV';
+            font-size: 200px;
+            opacity: 0.1;
+            position: absolute;
+        }
+
+        .template-info {
+            padding: 25px;
+        }
+
+        .template-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .template-category {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .template-description {
+            font-size: 14px;
+            color: #718096;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .template-bestfor {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+
+        .template-bestfor strong {
+            color: #2d3748;
+        }
+
+        .template-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .template-features li {
+            font-size: 13px;
+            color: #718096;
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .template-features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        .template-colors {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .color-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .stat-item h3 {
+            font-size: 36px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-item p {
+            font-size: 14px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .templates-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 CV Template Gallery</h1>
+            <p>Choose from our professionally designed templates</p>
+        </div>
+
+        <div class="stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3 id="total-templates">6</h3>
+                    <p>Total Templates</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="categories-count">5</h3>
+                    <p>Categories</p>
+                </div>
+                <div class="stat-item">
+                    <h3>ATS</h3>
+                    <p>Optimized</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="category-filters">
+            <button class="filter-btn active" data-category="all">All Templates</button>
+            <button class="filter-btn" data-category="modern">Modern</button>
+            <button class="filter-btn" data-category="traditional">Traditional</button>
+            <button class="filter-btn" data-category="creative">Creative</button>
+            <button class="filter-btn" data-category="functional">Functional</button>
+            <button class="filter-btn" data-category="executive">Executive</button>
+        </div>
+
+        <div class="templates-grid" id="templates-grid">
+            <!-- Templates will be loaded here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // Template data - fetched from API
+        let templates = [];
+
+        // Render templates
+        function renderTemplates(filter = 'all') {
+            const grid = document.getElementById('templates-grid');
+            grid.innerHTML = '';
+
+            const filtered = filter === 'all'
+                ? templates
+                : templates.filter(t => t.category === filter);
+
+            filtered.forEach(template => {
+                const card = document.createElement('div');
+                card.className = 'template-card';
+                card.innerHTML = `
+                    <div class="template-preview">
+                        ${template.name.split(' ').map(w => w[0]).join('')}
+                    </div>
+                    <div class="template-info">
+                        <div class="template-name">${template.name}</div>
+                        <div class="template-category">${template.category}</div>
+                        <div class="template-description">${template.description}</div>
+                        <div class="template-bestfor">
+                            <strong>Best for:</strong> ${template.bestFor.join(', ')}
+                        </div>
+                        <div class="template-colors">
+                            ${Object.values(template.colors).map(color => `<div class="color-dot" style="background: ${color}"></div>`).join('')}
+                        </div>
+                        <ul class="template-features">
+                            ${template.features.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                        <div class="template-actions">
+                            <button class="btn btn-primary" onclick="selectTemplate('${template.id}')">
+                                Use Template
+                            </button>
+                            <button class="btn btn-secondary" onclick="previewTemplate('${template.id}')">
+                                Preview
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderTemplates(btn.dataset.category);
+            });
+        });
+
+        // Actions
+        function selectTemplate(templateId) {
+            alert(`Selected template: ${templateId}\n\nThis will be integrated with the CV generation flow.`);
+            // TODO: Integrate with CV generation
+        }
+
+        function previewTemplate(templateId) {
+            // Open preview PDF in new tab
+            window.open(`/api/templates/${templateId}/preview`, '_blank');
+        }
+
+        // Fetch templates from API and render
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/api/templates');
+                templates = await response.json();
+
+                // Update template count
+                document.getElementById('total-templates').textContent = templates.length;
+
+                // Get unique categories
+                const categories = [...new Set(templates.map(t => t.category))];
+                document.getElementById('categories-count').textContent = categories.length;
+
+                // Initial render
+                renderTemplates();
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                document.getElementById('templates-grid').innerHTML =
+                    '<p style="color: white; text-align: center; padding: 40px;">Error loading templates. Please refresh the page.</p>';
+            }
+        }
+
+        // Load templates on page load
+        loadTemplates();
+    </script>
+</body>
+</html>

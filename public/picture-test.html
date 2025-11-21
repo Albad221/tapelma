@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SamaCV - Test de Photo CV</title>
+    <link rel="stylesheet" href="/css/picture-test.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📸 Test de Photo CV</h1>
+            <p class="subtitle">Testez l'analyse et la génération de photos professionnelles</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section card">
+                <h2>1. Télécharger une photo</h2>
+                <div class="upload-zone" id="uploadZone">
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p>Cliquez ou glissez une image ici</p>
+                    <p class="upload-hint">Format: JPG, PNG (max 5MB)</p>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                </div>
+
+                <div class="preview-container hidden" id="previewContainer">
+                    <h3>Aperçu de l'image</h3>
+                    <img id="imagePreview" alt="Preview">
+                    <button class="btn btn-secondary" id="changeImageBtn">Changer l'image</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="jobDescription">Description du poste (optionnel)</label>
+                    <input
+                        type="text"
+                        id="jobDescription"
+                        placeholder="Ex: Software Engineer, Manager, Designer..."
+                        class="input"
+                    >
+                </div>
+
+                <div class="language-selector">
+                    <label>Langue</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="language" value="fr" checked>
+                            <span>Français</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="language" value="en">
+                            <span>English</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="language" value="es">
+                            <span>Español</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="analyzeBtn" disabled>
+                    Analyser la photo
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section">
+                <!-- Analysis Results -->
+                <div class="card hidden" id="analysisCard">
+                    <h2>2. Résultat de l'analyse</h2>
+                    <div id="analysisResult"></div>
+                </div>
+
+                <!-- Generated Image -->
+                <div class="card hidden" id="generatedCard">
+                    <h2>3. Photo professionnelle générée</h2>
+                    <div class="generated-image-container">
+                        <img id="generatedImage" alt="Generated professional photo">
+                    </div>
+                    <div class="image-actions">
+                        <button class="btn btn-success" id="downloadBtn">
+                            📥 Télécharger l'image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Comparison View -->
+                <div class="card hidden" id="comparisonCard">
+                    <h2>Comparaison</h2>
+                    <div class="comparison-container">
+                        <div class="comparison-item">
+                            <h3>Original</h3>
+                            <img id="comparisonOriginal" alt="Original">
+                        </div>
+                        <div class="comparison-arrow">→</div>
+                        <div class="comparison-item">
+                            <h3>Généré</h3>
+                            <img id="comparisonGenerated" alt="Generated">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <p id="loadingText">Analyse en cours...</p>
+        </div>
+
+        <!-- Back to Main -->
+        <div class="back-link">
+            <a href="/">← Retour à l'interface principale</a>
+        </div>
+    </div>
+
+    <script src="/js/picture-test.js"></script>
+</body>
+</html>

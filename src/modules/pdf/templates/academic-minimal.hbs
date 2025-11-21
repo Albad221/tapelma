@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{personalInfo.fullName}} - CV</title>
+    <style>
+        :root {
+            --link-color: #31e;
+            --v-padding: 10mm;
+            --h-padding: 20mm;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        html {
+            font-size: 62.5%;
+        }
+
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        :is(h1, h2) {
+            font-size: 1em;
+            margin: 0;
+        }
+
+        h2 {
+            padding-block-start: 1em;
+            margin-block-end: 1em;
+            border-top: 1px solid #ddd;
+        }
+
+        small {
+            color: #666;
+            font-size: 1em;
+            font-style: italic;
+        }
+
+        dt {
+            font-style: italic;
+            white-space: nowrap;
+            width: 15mm;
+        }
+
+        dd {
+            margin-inline-start: 0;
+        }
+
+        ul {
+            padding-inline-start: 0;
+            list-style-type: square;
+        }
+
+        :is(header, dd, footer) p {
+            margin: 0;
+        }
+
+        main {
+            flex-grow: 1;
+        }
+
+        .cv {
+            background-color: white;
+            color: black;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            width: 210mm;
+            height: 297mm;
+            padding: var(--v-padding) var(--h-padding);
+            margin: 0;
+        }
+
+        .cv__header {
+            margin-block-end: 1em;
+        }
+
+        .cv__header .cv__column {
+            margin-block: 1em;
+        }
+
+        .cv__footer {
+            margin-block-start: 1em;
+        }
+
+        .cv__section {
+            break-inside: avoid;
+            margin-block-end: 1em;
+            page-break-inside: avoid;
+        }
+
+        .cv__column {
+            columns: 2;
+            column-gap: 10mm;
+            align-items: start;
+        }
+
+        .cv__text {
+            text-align: justify;
+        }
+
+        .cv__list {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5em 2em;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="cv">
+    <header class="cv__header">
+        <!-- Profile Picture -->
+        {{#if hasCVPicture}}
+        <div style="text-align: center; margin-bottom: 1em;">
+            <img src="{{cvPictureUrl}}" alt="Profile Picture" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        </div>
+        {{/if}}
+
+        <h1>{{personalInfo.fullName}}</h1>
+        {{#if workExperiences.[0].position}}
+        <p><em>{{workExperiences.[0].position}}</em></p>
+        {{/if}}
+
+        <div class="cv__column">
+            <dl class="cv__list">
+                {{#if personalInfo.portfolio}}
+                <dt>Internet</dt>
+                <dd><a href="{{personalInfo.portfolio}}">{{personalInfo.portfolio}}</a></dd>
+                {{/if}}
+                {{#if personalInfo.email}}
+                <dt>Email</dt>
+                <dd><a href="mailto:{{personalInfo.email}}">{{personalInfo.email}}</a></dd>
+                {{/if}}
+                {{#if personalInfo.phone}}
+                <dt>Phone</dt>
+                <dd><a href="tel:{{personalInfo.phone}}">{{personalInfo.phone}}</a></dd>
+                {{/if}}
+            </dl>
+
+            <dl class="cv__list">
+                {{#if personalInfo.city}}
+                <dt>Residence</dt>
+                <dd>{{personalInfo.city}}{{#if personalInfo.country}}, {{personalInfo.country}}{{/if}}</dd>
+                {{/if}}
+                {{#if personalInfo.linkedIn}}
+                <dt>LinkedIn</dt>
+                <dd><a href="{{personalInfo.linkedIn}}">{{personalInfo.linkedIn}}</a></dd>
+                {{/if}}
+            </dl>
+        </div>
+
+        {{#if personalInfo.summary}}
+        <h2>Professional Summary</h2>
+        <p class="cv__text">{{personalInfo.summary}}</p>
+        {{/if}}
+
+        {{#if hasProfessionalSummary}}
+        <h2>Summary</h2>
+        <p class="cv__text">{{professionalSummary}}</p>
+        {{/if}}
+    </header>
+
+    <main class="cv__column">
+        {{#if hasEducation}}
+        <section class="cv__section">
+            <h2>Education</h2>
+            <dl class="cv__list">
+                {{#each education}}
+                <dt>{{this.duration}}</dt>
+                <dd>
+                    {{this.degreeField}}<br>
+                    <small>{{this.institution}}</small>
+                    {{#if this.gpa}}
+                    <br><small>GPA: {{this.gpa}}</small>
+                    {{/if}}
+                </dd>
+                {{/each}}
+            </dl>
+        </section>
+        {{/if}}
+
+        {{#if hasSkills}}
+        <section class="cv__section">
+            <h2>Skills</h2>
+            <dl class="cv__list">
+                <dt>Skills</dt>
+                <dd>{{#each skills}}{{this.name}}{{#unless @last}}, {{/unless}}{{/each}}</dd>
+                {{#if hasLanguages}}
+                <dt>Languages</dt>
+                <dd>{{#each languages}}{{this.name}} ({{this.proficiency}}){{#unless @last}}, {{/unless}}{{/each}}</dd>
+                {{/if}}
+            </dl>
+        </section>
+        {{/if}}
+
+        {{#if hasCertifications}}
+        <section class="cv__section">
+            <h2>Certifications</h2>
+            <dl class="cv__list">
+                {{#each certifications}}
+                <dt>{{this.issueDate}}</dt>
+                <dd>
+                    {{this.name}}<br>
+                    <small>{{this.issuingOrganization}}</small>
+                </dd>
+                {{/each}}
+            </dl>
+        </section>
+        {{/if}}
+
+        {{#if hasWorkExperience}}
+        <section class="cv__section">
+            <h2>Experience</h2>
+            <dl class="cv__list">
+                {{#each workExperiences}}
+                <dt>{{this.duration}}</dt>
+                <dd>
+                    <p><strong>{{this.position}}</strong></p>
+                    <p><small>{{this.companyName}}{{#if this.location}}, {{this.location}}{{/if}}</small></p>
+                    {{#if this.description}}
+                    <p>{{this.description}}</p>
+                    {{/if}}
+                </dd>
+                {{/each}}
+            </dl>
+        </section>
+        {{/if}}
+    </main>
+
+    <footer class="cv__footer">
+        <p><small>Generated by SamaCV</small></p>
+    </footer>
+</body>
+</html>

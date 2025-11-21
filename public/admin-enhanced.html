@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SamaCV - Gestion Avancée des Champs CV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .category-section {
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+            padding-left: 20px;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-header:hover {
+            background: #e9ecef;
+        }
+
+        .category-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-obligatoire { background: #dc3545; color: white; }
+        .badge-fortement_recommande { background: #fd7e14; color: white; }
+        .badge-recommande { background: #ffc107; color: #333; }
+        .badge-optionnel { background: #6c757d; color: white; }
+        .badge-a_eviter { background: #e9ecef; color: #666; }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .field-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .field-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .field-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .field-technical {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+
+        .field-description {
+            color: #666;
+            font-size: 0.85em;
+            margin: 8px 0;
+        }
+
+        .field-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .meta-tag {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .meta-tag.type {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.75em;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #667eea;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .toggle-all {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 SamaCV - Gestion Avancée des Champs CV</h1>
+            <p>Configurez les catégories, champs et types de données pour votre formulaire CV</p>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCategories">0</div>
+                <div class="stat-label">Catégories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalFields">0</div>
+                <div class="stat-label">Champs Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="mandatoryFields">0</div>
+                <div class="stat-label">Champs Obligatoires</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="arrayFields">0</div>
+                <div class="stat-label">Champs Tableau</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('fields')">📋 Gestion des Champs</button>
+            <button class="tab" onclick="switchTab('categories')">📂 Catégories</button>
+            <button class="tab" onclick="switchTab('overview')">📊 Vue d'ensemble</button>
+        </div>
+
+        <!-- FIELDS TAB -->
+        <div id="fieldsTab" class="tab-content active">
+            <div class="card">
+                <div class="search-box">
+                    <input type="text" id="searchField" placeholder="🔍 Rechercher un champ..." oninput="filterFields()">
+                </div>
+
+                <div class="toggle-all">
+                    <span style="font-weight: 600;">Actions globales:</span>
+                    <div class="button-group" style="margin: 0;">
+                        <button class="btn btn-sm btn-primary" onclick="expandAllCategories()">Tout Développer</button>
+                        <button class="btn btn-sm btn-secondary" onclick="collapseAllCategories()">Tout Réduire</button>
+                        <button class="btn btn-sm btn-success" onclick="openAddFieldModal()">+ Ajouter un Champ</button>
+                    </div>
+                </div>
+
+                <div id="categoriesContainer"></div>
+            </div>
+        </div>
+
+        <!-- CATEGORIES TAB -->
+        <div id="categoriesTab" class="tab-content">
+            <div class="card">
+                <h2>📂 Gestion des Catégories</h2>
+                <div id="categoriesListContainer"></div>
+            </div>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div id="overviewTab" class="tab-content">
+            <div class="card">
+                <h2>📊 Vue d'ensemble de la Configuration</h2>
+                <div id="overviewContainer"></div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-success" onclick="saveConfiguration()">💾 Enregistrer la Configuration</button>
+            <button class="btn btn-secondary" onclick="loadConfiguration()">🔄 Recharger</button>
+            <button class="btn btn-danger" onclick="resetToDefaults()">⚠️ Réinitialiser</button>
+        </div>
+    </div>
+
+    <!-- Edit Field Modal -->
+    <div id="editFieldModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Modifier le Champ</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="fieldForm">
+                <div class="form-group">
+                    <label>Nom technique du champ *</label>
+                    <input type="text" id="fieldName" required>
+                    <small>Ex: last_name, email, experience.job_title</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Label d'affichage *</label>
+                    <input type="text" id="fieldLabel" required>
+                    <small>Ex: Nom, Adresse e-mail</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="fieldDescription"></textarea>
+                    <small>Texte d'aide pour l'utilisateur</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Catégorie *</label>
+                    <select id="fieldCategory" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Type de champ *</label>
+                    <select id="fieldType" required>
+                        <option value="text_short">Texte court</option>
+                        <option value="text_multi">Texte multi-ligne</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Téléphone</option>
+                        <option value="date">Date</option>
+                        <option value="url">URL</option>
+                        <option value="select">Sélection unique</option>
+                        <option value="multi_select">Sélection multiple</option>
+                        <option value="list_tags">Liste de tags</option>
+                        <option value="boolean">Booléen (Oui/Non)</option>
+                        <option value="number">Nombre</option>
+                        <option value="file">Fichier</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Obligation *</label>
+                    <select id="fieldObligation" required>
+                        <option value="obligatoire">Obligatoire</option>
+                        <option value="fortement_recommande">Fortement recommandé</option>
+                        <option value="recommande">Recommandé</option>
+                        <option value="optionnel">Optionnel</option>
+                        <option value="a_eviter">À éviter</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Format / Indice</label>
+                    <input type="text" id="fieldFormat">
+                    <small>Ex: +33 6 12 34 56 78, JJ/MM/AAAA</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Placeholder</label>
+                    <input type="text" id="fieldPlaceholder">
+                    <small>Texte d'exemple dans le champ</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Ordre d'affichage</label>
+                    <input type="number" id="fieldOrder" min="1">
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="fieldIsArray">
+                    <label for="fieldIsArray">Ce champ est un tableau (array)</label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="fieldShowInForm" checked>
+                    <label for="fieldShowInForm">Afficher dans le formulaire</label>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = null;
+        let editingFieldName = null;
+        let expandedCategories = new Set();
+
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/admin/enhanced/cv-config');
+                currentConfig = await response.json();
+                renderAll();
+                showMessage('Configuration chargée avec succès ✅', 'success');
+            } catch (error) {
+                showMessage('Erreur de chargement: ' + error.message, 'error');
+            }
+        }
+
+        function renderAll() {
+            updateStats();
+            renderFields();
+            renderCategoriesList();
+            renderOverview();
+            populateCategorySelect();
+        }
+
+        function updateStats() {
+            document.getElementById('totalCategories').textContent = currentConfig.categories.length;
+            document.getElementById('totalFields').textContent = currentConfig.fields.length;
+            const mandatory = currentConfig.fields.filter(f => f.obligation === 'obligatoire').length;
+            document.getElementById('mandatoryFields').textContent = mandatory;
+            const arrayFields = currentConfig.fields.filter(f => f.isArray).length;
+            document.getElementById('arrayFields').textContent = arrayFields;
+        }
+
+        function renderFields() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+
+            currentConfig.categories.forEach(category => {
+                const fields = currentConfig.fields
+                    .filter(f => f.category === category.categoryId)
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category-section';
+                categoryDiv.id = `category-${category.categoryId}`;
+
+                const isExpanded = expandedCategories.has(category.categoryId);
+
+                categoryDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCategory('${category.categoryId}')">
+                        <div>
+                            <span class="category-title">
+                                ${isExpanded ? '▼' : '▶'} ${category.categoryName}
+                                <span class="category-badge badge-${category.defaultObligation}">
+                                    ${category.defaultObligation.replace('_', ' ')}
+                                </span>
+                            </span>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                                ${category.description} • ${fields.length} champs
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fields-grid" style="display: ${isExpanded ? 'grid' : 'none'};" id="fields-${category.categoryId}">
+                        ${fields.map(field => createFieldCard(field)).join('')}
+                    </div>
+                `;
+
+                container.appendChild(categoryDiv);
+            });
+        }
+
+        function createFieldCard(field) {
+            return `
+                <div class="field-card" data-field="${field.fieldName}">
+                    <div class="field-header">
+                        <div>
+                            <div class="field-name">${field.label}</div>
+                            <div class="field-technical">${field.fieldName}</div>
+                        </div>
+                    </div>
+                    ${field.description ? `<div class="field-description">${field.description}</div>` : ''}
+                    <div class="field-meta">
+                        <span class="meta-tag type">${field.fieldType}</span>
+                        <span class="meta-tag badge-${field.obligation}">${field.obligation}</span>
+                        ${field.isArray ? '<span class="meta-tag">array</span>' : ''}
+                        ${field.format ? `<span class="meta-tag">📝 ${field.format}</span>` : ''}
+                    </div>
+                    ${field.placeholder ? `<div style="font-size: 0.8em; color: #999; margin-top: 8px;">💡 "${field.placeholder}"</div>` : ''}
+                    <div class="field-actions">
+                        <button class="btn btn-sm btn-primary" onclick='editField("${field.fieldName}")'>✏️ Modifier</button>
+                        <button class="btn btn-sm btn-danger" onclick='deleteField("${field.fieldName}")'>🗑️ Supprimer</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleCategory(categoryId) {
+            if (expandedCategories.has(categoryId)) {
+                expandedCategories.delete(categoryId);
+            } else {
+                expandedCategories.add(categoryId);
+            }
+            renderFields();
+        }
+
+        function expandAllCategories() {
+            currentConfig.categories.forEach(cat => expandedCategories.add(cat.categoryId));
+            renderFields();
+        }
+
+        function collapseAllCategories() {
+            expandedCategories.clear();
+            renderFields();
+        }
+
+        function filterFields() {
+            const search = document.getElementById('searchField').value.toLowerCase();
+            const fieldCards = document.querySelectorAll('.field-card');
+
+            fieldCards.forEach(card => {
+                const fieldName = card.getAttribute('data-field').toLowerCase();
+                const text = card.textContent.toLowerCase();
+                if (text.includes(search) || fieldName.includes(search)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function renderCategoriesList() {
+            const container = document.getElementById('categoriesListContainer');
+            container.innerHTML = currentConfig.categories
+                .sort((a, b) => a.order - b.order)
+                .map(cat => {
+                    const fieldCount = currentConfig.fields.filter(f => f.category === cat.categoryId).length;
+                    return `
+                        <div class="field-card">
+                            <div class="field-header">
+                                <div>
+                                    <div class="field-name">${cat.categoryName}</div>
+                                    <div class="field-technical">${cat.categoryId}</div>
+                                </div>
+                                <span class="category-badge badge-${cat.defaultObligation}">
+                                    ${cat.defaultObligation}
+                                </span>
+                            </div>
+                            <div class="field-description">${cat.description}</div>
+                            <div class="field-meta">
+                                <span class="meta-tag">Ordre: ${cat.order}</span>
+                                <span class="meta-tag">${fieldCount} champs</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        function renderOverview() {
+            const container = document.getElementById('overviewContainer');
+
+            const byObligation = {};
+            currentConfig.fields.forEach(f => {
+                byObligation[f.obligation] = (byObligation[f.obligation] || 0) + 1;
+            });
+
+            const byType = {};
+            currentConfig.fields.forEach(f => {
+                byType[f.fieldType] = (byType[f.fieldType] || 0) + 1;
+            });
+
+            container.innerHTML = `
+                <h3>Répartition par obligation</h3>
+                <div class="fields-grid">
+                    ${Object.entries(byObligation).map(([key, count]) => `
+                        <div class="stat-card">
+                            <div class="stat-number">${count}</div>
+                            <div class="stat-label">${key.replace('_', ' ')}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <h3 style="margin-top: 30px;">Répartition par type</h3>
+                <div class="fields-grid">
+                    ${Object.entries(byType).map(([key, count]) => `
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <div style="font-weight: 600; margin-bottom: 5px;">${key}</div>
+                            <div style="font-size: 1.5em; color: #667eea;">${count}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('fieldCategory');
+            select.innerHTML = currentConfig.categories
+                .sort((a, b) => a.order - b.order)
+                .map(cat => `<option value="${cat.categoryId}">${cat.categoryName}</option>`)
+                .join('');
+        }
+
+        function openAddFieldModal() {
+            editingFieldName = null;
+            document.getElementById('modalTitle').textContent = 'Ajouter un Nouveau Champ';
+            document.getElementById('fieldForm').reset();
+            document.getElementById('fieldShowInForm').checked = true;
+            document.getElementById('editFieldModal').style.display = 'block';
+        }
+
+        function editField(fieldName) {
+            editingFieldName = fieldName;
+            const field = currentConfig.fields.find(f => f.fieldName === fieldName);
+
+            document.getElementById('modalTitle').textContent = 'Modifier le Champ';
+            document.getElementById('fieldName').value = field.fieldName;
+            document.getElementById('fieldLabel').value = field.label;
+            document.getElementById('fieldDescription').value = field.description || '';
+            document.getElementById('fieldCategory').value = field.category;
+            document.getElementById('fieldType').value = field.fieldType;
+            document.getElementById('fieldObligation').value = field.obligation;
+            document.getElementById('fieldFormat').value = field.format || '';
+            document.getElementById('fieldPlaceholder').value = field.placeholder || '';
+            document.getElementById('fieldOrder').value = field.order || '';
+            document.getElementById('fieldIsArray').checked = field.isArray || false;
+            document.getElementById('fieldShowInForm').checked = field.showInForm !== false;
+
+            document.getElementById('editFieldModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('editFieldModal').style.display = 'none';
+        }
+
+        document.getElementById('fieldForm').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const fieldData = {
+                fieldName: document.getElementById('fieldName').value,
+                label: document.getElementById('fieldLabel').value,
+                description: document.getElementById('fieldDescription').value,
+                category: document.getElementById('fieldCategory').value,
+                fieldType: document.getElementById('fieldType').value,
+                obligation: document.getElementById('fieldObligation').value,
+                format: document.getElementById('fieldFormat').value,
+                placeholder: document.getElementById('fieldPlaceholder').value,
+                order: parseInt(document.getElementById('fieldOrder').value) || 999,
+                isArray: document.getElementById('fieldIsArray').checked,
+                showInForm: document.getElementById('fieldShowInForm').checked,
+            };
+
+            try {
+                if (editingFieldName) {
+                    // Update existing field
+                    const response = await fetch(`/api/admin/enhanced/fields/${editingFieldName}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fieldData),
+                    });
+                    currentConfig = await response.json();
+                } else {
+                    // Add new field
+                    const response = await fetch('/api/admin/enhanced/fields', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fieldData),
+                    });
+                    currentConfig = await response.json();
+                }
+
+                renderAll();
+                closeModal();
+                showMessage('Champ enregistré avec succès ✅', 'success');
+            } catch (error) {
+                showMessage('Erreur: ' + error.message, 'error');
+            }
+        };
+
+        async function deleteField(fieldName) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer le champ "${fieldName}" ?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/enhanced/fields/${fieldName}`, {
+                    method: 'DELETE',
+                });
+                currentConfig = await response.json();
+                renderAll();
+                showMessage('Champ supprimé ✅', 'success');
+            } catch (error) {
+                showMessage('Erreur: ' + error.message, 'error');
+            }
+        }
+
+        async function saveConfiguration() {
+            try {
+                const response = await fetch('/api/admin/enhanced/cv-config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentConfig),
+                });
+                currentConfig = await response.json();
+                showMessage('Configuration enregistrée avec succès! ✅', 'success');
+            } catch (error) {
+                showMessage('Erreur: ' + error.message, 'error');
+            }
+        }
+
+        async function resetToDefaults() {
+            if (!confirm('Êtes-vous sûr de vouloir réinitialiser toute la configuration ? Cette action est irréversible.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/enhanced/cv-config/reset', {
+                    method: 'POST',
+                });
+                currentConfig = await response.json();
+                renderAll();
+                showMessage('Configuration réinitialisée ⚠️', 'success');
+            } catch (error) {
+                showMessage('Erreur: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editFieldModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfiguration();
+        });
+    </script>
+</body>
+</html>

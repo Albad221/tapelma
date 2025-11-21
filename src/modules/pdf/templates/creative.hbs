@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{personalInfo.fullName}} - CV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', 'Arial', sans-serif;
+            color: #2c3e50;
+            line-height: 1.6;
+            background: #ffffff;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 38%;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 50px 35px;
+            position: relative;
+        }
+
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -20px;
+            width: 40px;
+            height: 100%;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            transform: skewX(-5deg);
+        }
+
+        .main-content {
+            width: 62%;
+            padding: 50px 55px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .profile-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-img-placeholder {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            border: 5px solid rgba(255, 255, 255, 0.4);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            font-weight: bold;
+        }
+
+        h1 {
+            font-size: 38px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #1a202c;
+            letter-spacing: -0.5px;
+        }
+
+        .job-title {
+            font-size: 22px;
+            color: #e74c3c;
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .contact-info {
+            margin: 25px 0;
+        }
+
+        .contact-item {
+            margin: 10px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+        }
+
+        .contact-item::before {
+            content: "▸";
+            margin-right: 10px;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .section {
+            margin-bottom: 35px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 4px solid #e74c3c;
+            color: #1a202c;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: #f39c12;
+        }
+
+        .sidebar .section-title {
+            color: white;
+            border-bottom-color: rgba(255, 255, 255, 0.4);
+            font-size: 18px;
+        }
+
+        .sidebar .section-title::after {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .experience-item, .education-item {
+            margin-bottom: 28px;
+            page-break-inside: avoid;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .experience-item::before, .education-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            background: #e74c3c;
+            border-radius: 50%;
+        }
+
+        .item-header {
+            margin-bottom: 12px;
+        }
+
+        .item-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a202c;
+            margin-bottom: 5px;
+        }
+
+        .item-subtitle {
+            font-size: 16px;
+            color: #e74c3c;
+            font-weight: 700;
+            margin: 4px 0;
+        }
+
+        .item-meta {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        .item-description {
+            font-size: 14px;
+            color: #4a5568;
+            line-height: 1.7;
+            margin-top: 12px;
+            white-space: pre-line;
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .skill-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border-left: 4px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.3s;
+        }
+
+        .language-item {
+            margin: 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .language-item strong {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .summary {
+            font-size: 15px;
+            color: #4a5568;
+            line-height: 1.8;
+            text-align: justify;
+            padding: 18px;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border-left: 5px solid #e74c3c;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .cert-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+        }
+
+        .cert-item .name {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .cert-item .org {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 3px;
+        }
+
+        .cert-item .date {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="profile-section">
+                <!-- Profile Picture -->
+                {{#if hasCVPicture}}
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <img src="{{cvPictureUrl}}" alt="Profile Picture" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);">
+                </div>
+                {{else}}
+                <div class="profile-img-placeholder">
+                    {{#if personalInfo.firstName}}
+                        {{substring personalInfo.firstName 0 1}}{{substring personalInfo.lastName 0 1}}
+                    {{else}}
+                        CV
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+
+            <!-- Contact Information -->
+            <div class="contact-info">
+                {{#if personalInfo.email}}
+                <div class="contact-item">{{personalInfo.email}}</div>
+                {{/if}}
+                {{#if personalInfo.phone}}
+                <div class="contact-item">{{personalInfo.phone}}</div>
+                {{/if}}
+                {{#if personalInfo.location}}
+                <div class="contact-item">{{personalInfo.location}}</div>
+                {{/if}}
+                {{#if personalInfo.linkedIn}}
+                <div class="contact-item">{{personalInfo.linkedIn}}</div>
+                {{/if}}
+                {{#if personalInfo.portfolio}}
+                <div class="contact-item">{{personalInfo.portfolio}}</div>
+                {{/if}}
+            </div>
+
+            <!-- Skills -->
+            {{#if hasSkills}}
+            <div class="section">
+                <h3 class="section-title">Compétences</h3>
+                <div class="skills-grid">
+                    {{#each skills}}
+                    <div class="skill-item">{{this.name}}</div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+
+            <!-- Languages -->
+            {{#if hasLanguages}}
+            <div class="section">
+                <h3 class="section-title">Langues</h3>
+                {{#each languages}}
+                <div class="language-item">
+                    <strong>{{this.name}}</strong><br>
+                    {{this.proficiency}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            <!-- Certifications -->
+            {{#if hasCertifications}}
+            <div class="section">
+                <h3 class="section-title">Certifications</h3>
+                {{#each certifications}}
+                <div class="cert-item">
+                    <div class="name">{{this.name}}</div>
+                    {{#if this.issuingOrganization}}
+                    <div class="org">{{this.issuingOrganization}}</div>
+                    {{/if}}
+                    {{#if this.duration}}
+                    <div class="date">{{this.duration}}</div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h1>{{personalInfo.fullName}}</h1>
+                {{#if workExperiences.[0].position}}
+                <div class="job-title">{{workExperiences.[0].position}}</div>
+                {{/if}}
+            </div>
+
+            <!-- Professional Summary -->
+            {{#if personalInfo.summary}}
+            <div class="section">
+                <h2 class="section-title">Profil Professionnel</h2>
+                <div class="summary">{{personalInfo.summary}}</div>
+            </div>
+            {{/if}}
+
+            {{#if hasProfessionalSummary}}
+            <div class="section">
+                <h2 class="section-title">Résumé Professionnel</h2>
+                <div class="item-description">
+                    <p>{{professionalSummary}}</p>
+                </div>
+            </div>
+            {{/if}}
+
+            <!-- Experience -->
+            {{#if hasWorkExperience}}
+            <div class="section">
+                <h2 class="section-title">Expérience Professionnelle</h2>
+                {{#each workExperiences}}
+                <div class="experience-item">
+                    <div class="item-header">
+                        <div class="item-title">{{this.position}}</div>
+                        <div class="item-subtitle">{{this.companyName}}</div>
+                        <div class="item-meta">
+                            {{this.duration}}
+                            {{#if this.location}} • {{this.location}}{{/if}}
+                        </div>
+                    </div>
+                    {{#if this.description}}
+                    <div class="item-description">{{this.description}}</div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            <!-- Education -->
+            {{#if hasEducation}}
+            <div class="section">
+                <h2 class="section-title">Formation</h2>
+                {{#each education}}
+                <div class="education-item">
+                    <div class="item-header">
+                        <div class="item-title">{{this.degreeField}}</div>
+                        <div class="item-subtitle">{{this.institution}}</div>
+                        <div class="item-meta">
+                            {{this.duration}}
+                            {{#if this.location}} • {{this.location}}{{/if}}
+                            {{#if this.gpa}} • GPA: {{this.gpa}}{{/if}}
+                        </div>
+                    </div>
+                    {{#if this.description}}
+                    <div class="item-description">{{this.description}}</div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+    </div>
+</body>
+</html>

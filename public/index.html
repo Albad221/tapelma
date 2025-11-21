@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SamaCV - Test Interface</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 SamaCV Test Interface</h1>
+            <p class="subtitle">Test the CV generation flow before WhatsApp deployment</p>
+        </div>
+
+        <div class="chat-container">
+            <div class="session-info">
+                <span id="session-status" class="status-badge">Not Started</span>
+                <span id="phone-number">Phone: Test User</span>
+                <button id="reset-btn" class="btn-secondary">Reset Session</button>
+            </div>
+
+            <div id="chat-messages" class="messages"></div>
+
+            <div class="input-container">
+                <input
+                    type="text"
+                    id="message-input"
+                    placeholder="Type your message..."
+                    autocomplete="off"
+                >
+                <input
+                    type="file"
+                    id="image-input"
+                    accept="image/*"
+                    style="display: none;"
+                >
+                <button id="image-btn" class="btn-secondary" title="Upload Image">📷</button>
+                <button id="send-btn" class="btn-primary">Send</button>
+            </div>
+
+            <div class="quick-actions">
+                <h3>Quick Test Messages:</h3>
+                <button class="quick-btn" data-message="start">Start</button>
+                <button class="quick-btn" data-message="English">English</button>
+                <button class="quick-btn" data-message="John Doe, john@example.com, +1234567890, New York, USA">Personal Info</button>
+                <button class="quick-btn" data-message="Software Engineer at Google, 2020-2023, Developed scalable microservices">Work Experience</button>
+                <button class="quick-btn" data-message="done">Done</button>
+            </div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>Debug Information</h3>
+            <div id="debug-info" class="debug-content"></div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
