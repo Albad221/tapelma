@@ -15,8 +15,8 @@ export class WhatsAppService {
     private configService: ConfigService,
     private httpService: HttpService,
   ) {
-    this.apiEndpoint = this.configService.get<string>('WATI_API_ENDPOINT') || '';
-    this.accessToken = this.configService.get<string>('WATI_ACCESS_TOKEN') || '';
+    this.apiEndpoint = this.configService.get<string>('WATI_API_URL') || '';
+    this.accessToken = this.configService.get<string>('WATI_API_TOKEN') || '';
     // Enable test mode if WATI credentials are not configured
     this.isTestMode = !this.accessToken || this.accessToken === 'your-wati-access-token';
     if (this.isTestMode) {
@@ -368,8 +368,8 @@ export class WhatsAppService {
     try {
       this.logger.log(`Downloading image with media ID: ${mediaId}`);
 
-      const accessToken = this.configService.get<string>('WATI_ACCESS_TOKEN');
-      const endpoint = this.configService.get<string>('WATI_API_ENDPOINT');
+      const accessToken = this.configService.get<string>('WATI_API_TOKEN');
+      const endpoint = this.configService.get<string>('WATI_API_URL');
 
       // If direct media URL is provided, use it
       if (mediaUrl) {
