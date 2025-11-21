@@ -387,39 +387,42 @@ export class WhatsAppService {
    */
   async downloadImage(mediaId: string, mediaUrl?: string): Promise<Buffer> {
     try {
-      this.logger.log(`Downloading image with media ID: ${mediaId}`);
+      this.logger.log(`Downloading image with media ID: ${mediaId}, mediaUrl: ${mediaUrl}`);
 
       const accessToken = this.configService.get<string>('WATI_API_TOKEN') || this.configService.get<string>('WATI_ACCESS_TOKEN');
       const endpoint = this.configService.get<string>('WATI_API_URL') || this.configService.get<string>('WATI_API_ENDPOINT');
 
-      // If direct media URL is provided, use it
-      if (mediaUrl) {
-        const response = await this.httpService.axiosRef.get(mediaUrl, {
-          responseType: 'arraybuffer',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
+      // Determine the download URL
+      let downloadUrl: string;
+
+      // If mediaId is already a full URL (WATI sends the full URL in 'data' field for images)
+      if (mediaId && mediaId.startsWith('http')) {
+        downloadUrl = mediaId;
+        this.logger.log(`Using mediaId as direct URL: ${downloadUrl}`);
+      } else if (mediaUrl && mediaUrl.startsWith('http')) {
+        downloadUrl = mediaUrl;
+        this.logger.log(`Using mediaUrl: ${downloadUrl}`);
+      } else {
+        // Fetch media URL from WATI API using media ID
+        this.logger.log(`Fetching media info from WATI API for mediaId: ${mediaId}`);
+        const mediaInfoResponse = await this.httpService.axiosRef.get(
+          `${endpoint}/api/v1/getMedia/${mediaId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
           },
-        });
-        return Buffer.from(response.data);
-      }
+        );
 
-      // Otherwise, fetch media URL from WATI API using media ID
-      const mediaInfoResponse = await this.httpService.axiosRef.get(
-        `${endpoint}/api/v1/getMedia/${mediaId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
+        downloadUrl = mediaInfoResponse.data.url || mediaInfoResponse.data.media_url;
 
-      const downloadUrl = mediaInfoResponse.data.url || mediaInfoResponse.data.media_url;
-
-      if (!downloadUrl) {
-        throw new Error('No download URL found for media');
+        if (!downloadUrl) {
+          throw new Error('No download URL found for media');
+        }
       }
 
       // Download the actual media file
+      this.logger.log(`Downloading from: ${downloadUrl}`);
       const imageResponse = await this.httpService.axiosRef.get(downloadUrl, {
         responseType: 'arraybuffer',
         headers: {
