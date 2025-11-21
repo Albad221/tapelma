@@ -1189,8 +1189,8 @@ export class ConversationService {
       const base64Image = imageBuffer.toString('base64');
       const dataUrl = `data:image/jpeg;base64,${base64Image}`;
 
-      // Analyze the image with Gemini Vision (free, no quota issues)
-      this.logger.log('Analyzing image with Gemini Vision...');
+      // Analyze the image with OpenAI Vision (determines if photo is suitable for CV)
+      this.logger.log('Analyzing image with OpenAI Vision...');
       await this.whatsappService.sendTextMessage(
         phoneNumber,
         session.language === 'fr'
@@ -1198,7 +1198,7 @@ export class ConversationService {
           : '📸 Analyzing your photo...',
       );
 
-      const analysis = await this.geminiService.analyzeCVPicture(dataUrl, session.language);
+      const analysis = await this.openaiService.analyzeCVPicture(dataUrl, session.language);
 
       if (analysis.isSuitable) {
         // Image is suitable - upload to storage
