@@ -550,6 +550,32 @@ Respond with a JSON object:
         throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
       }
 
+      // Validate and sanitize the response to prevent template text leakage
+      if (result.response) {
+        const templateLeakPatterns = [
+          'Your conversational response to the user',
+          'Your response in',
+          '${language',
+          'MUST be lowercase',
+          'extractedData',
+          'nextStep',
+          'shouldContinue',
+        ];
+
+        for (const pattern of templateLeakPatterns) {
+          if (result.response.includes(pattern)) {
+            this.logger.warn(`Template text leaked in response: ${result.response.substring(0, 100)}`);
+            // Return a generic response instead
+            result.response = language === 'fr'
+              ? 'Je comprends. Pouvez-vous me donner plus de détails ?'
+              : language === 'es'
+              ? 'Entiendo. ¿Puede darme más detalles?'
+              : 'I understand. Can you give me more details?';
+            break;
+          }
+        }
+      }
+
       this.logger.log(`AI Response: ${JSON.stringify(result)}`);
       return result;
     } catch (error) {

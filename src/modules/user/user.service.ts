@@ -387,4 +387,52 @@ export class UserService {
       return [];
     }
   }
+
+  /**
+   * Reset user's conversation - clear all sessions and message history
+   * This allows starting fresh without old context affecting the conversation
+   */
+  async resetUserConversation(phoneNumber: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // Find user by phone number
+      const { data: user, error: userError } = await this.supabase
+        .from('users')
+        .select('id')
+        .eq('phone_number', phoneNumber)
+        .single();
+
+      if (userError || !user) {
+        return { success: false, message: 'User not found' };
+      }
+
+      const userId = user.id;
+
+      // Delete all message logs for this user
+      const { error: messagesError } = await this.supabase
+        .from('message_logs')
+        .delete()
+        .eq('user_id', userId);
+
+      if (messagesError) {
+        this.logger.error(`Error deleting message logs: ${messagesError.message}`);
+      }
+
+      // Update all sessions to cancelled status
+      const { error: sessionsError } = await this.supabase
+        .from('conversation_sessions')
+        .update({ status: 'cancelled' })
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (sessionsError) {
+        this.logger.error(`Error updating sessions: ${sessionsError.message}`);
+      }
+
+      this.logger.log(`Reset conversation for user: ${phoneNumber}`);
+      return { success: true, message: 'Conversation history cleared successfully' };
+    } catch (error) {
+      this.logger.error(`Error resetting user conversation: ${error.message}`);
+      return { success: false, message: error.message };
+    }
+  }
 }

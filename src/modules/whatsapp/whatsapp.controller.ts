@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { WhatsAppService } from './whatsapp.service';
 import { ConversationService } from '../cv-generation/conversation.service';
+import { UserService } from '../user/user.service';
 
 @Controller('webhook')
 export class WhatsAppController {
@@ -16,6 +17,7 @@ export class WhatsAppController {
   constructor(
     private whatsappService: WhatsAppService,
     private conversationService: ConversationService,
+    private userService: UserService,
   ) {}
 
   @Post('whatsapp')
@@ -99,6 +101,19 @@ export class WhatsAppController {
     } catch (error) {
       this.logger.error(`Error getting test messages: ${error.message}`);
       return { messages: [] };
+    }
+  }
+
+  @Post('reset')
+  @HttpCode(200)
+  async resetConversation(@Body() payload: { phoneNumber: string }) {
+    try {
+      this.logger.log(`Resetting conversation for: ${payload.phoneNumber}`);
+      const result = await this.userService.resetUserConversation(payload.phoneNumber);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error resetting conversation: ${error.message}`);
+      return { success: false, message: error.message };
     }
   }
 }
