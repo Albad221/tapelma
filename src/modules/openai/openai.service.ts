@@ -492,22 +492,24 @@ RESPONSE FORMAT (JSON):
   "shouldContinue": true (or false ONLY at template_selection when user selects a template)
 }`;
 
-      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      // Limit conversation history to last 10 messages to avoid token limits
+      const limitedHistory = conversationHistory.slice(-10);
+      const limitedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
-        ...conversationHistory,
+        ...limitedHistory,
         { role: 'user', content: userMessage },
       ];
 
       const completion = await this.openai.chat.completions.create(
         {
           model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
-          messages,
+          messages: limitedMessages,
           temperature: 0.7,
           response_format: { type: 'json_object' },
-          max_tokens: 1000,
+          max_tokens: 2000,
         },
         {
-          timeout: 30000, // 30 second timeout
+          timeout: 60000, // 60 second timeout
         }
       );
 
