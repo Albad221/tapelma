@@ -488,12 +488,12 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
         throw new Error('Original image is required for professional CV picture generation');
       }
 
-      this.logger.log('Editing photo with Gemini 2.5 Flash Image (Nano Banana)...');
+      this.logger.log('Editing photo with Gemini 3 Pro Image Preview...');
       this.logger.log(`Job/profession context: ${description}`);
 
-      // Use Gemini 2.5 Flash Image for image editing
+      // Use Gemini 3 Pro Image Preview for image editing (best quality)
       const imageModel = this.genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash-image'
+        model: 'gemini-3-pro-image-preview'
       });
 
       // Determine professional context based on job description
@@ -544,7 +544,7 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
         throw new Error('No image data found in response');
       }
 
-      this.logger.log('Professional CV picture edited successfully with Gemini 2.5 Flash Image');
+      this.logger.log('Professional CV picture edited successfully with Gemini 3 Pro Image');
       return generatedImageBase64;
 
     } catch (error) {
