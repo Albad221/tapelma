@@ -554,6 +554,122 @@ CRÍTICO: Mantén EXACTAMENTE la misma persona. Modifica la postura si es necesa
   }
 
   /**
+   * Analyze a CV picture to determine if it's suitable for professional use
+   * This uses Gemini Vision to evaluate the image quality and appropriateness
+   * @param imageBase64 - Base64 encoded image data
+   * @param language - Language for the response
+   * @returns Analysis result with suitability and reason
+   */
+  async analyzeCVPicture(
+    imageBase64: string,
+    language: string = 'fr',
+  ): Promise<{ isSuitable: boolean; reason: string }> {
+    try {
+      this.logger.log('Analyzing CV picture with Gemini Vision...');
+
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const prompt = language === 'fr'
+        ? `Analysez cette photo pour déterminer si elle convient comme photo de CV professionnel.
+
+Critères d'évaluation:
+1. Visage clairement visible et bien éclairé
+2. Expression professionnelle et appropriée
+3. Arrière-plan non distrayant
+4. Qualité d'image suffisante (pas floue)
+5. Posture appropriée (pas de main sur le visage, pas de pose décontractée)
+6. Tenue vestimentaire acceptable (pas de vêtements inappropriés)
+
+Répondez en JSON avec ce format exact:
+{
+  "isSuitable": true/false,
+  "reason": "Explication en français (2-3 phrases maximum)"
+}
+
+Si la photo n'est PAS adaptée, expliquez pourquoi de manière constructive.
+Si la photo EST adaptée, mentionnez ses points forts.`
+        : `Analyze this photo to determine if it's suitable as a professional CV photo.
+
+Evaluation criteria:
+1. Face clearly visible and well-lit
+2. Professional and appropriate expression
+3. Non-distracting background
+4. Sufficient image quality (not blurry)
+5. Appropriate posture (no hand on face, no casual poses)
+6. Acceptable attire (no inappropriate clothing)
+
+Respond in JSON with this exact format:
+{
+  "isSuitable": true/false,
+  "reason": "Explanation in English (2-3 sentences maximum)"
+}
+
+If the photo is NOT suitable, explain why constructively.
+If the photo IS suitable, mention its strengths.`;
+
+      // Prepare image data
+      const imageData = imageBase64.startsWith('data:')
+        ? imageBase64.split(',')[1]
+        : imageBase64;
+
+      const result = await model.generateContent([
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: imageData,
+          },
+        },
+      ]);
+
+      const response = await result.response;
+      const responseText = response.text();
+
+      this.logger.log(`Gemini Vision response: ${responseText}`);
+
+      // Parse JSON response
+      try {
+        // Extract JSON from response (handle markdown code blocks)
+        let jsonStr = responseText;
+        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1].trim();
+        } else {
+          // Try to find JSON object directly
+          const directJsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (directJsonMatch) {
+            jsonStr = directJsonMatch[0];
+          }
+        }
+
+        const analysis = JSON.parse(jsonStr);
+        return {
+          isSuitable: analysis.isSuitable === true,
+          reason: analysis.reason || (language === 'fr' ? 'Analyse complète.' : 'Analysis complete.'),
+        };
+      } catch (parseError) {
+        this.logger.warn(`Failed to parse Gemini response as JSON: ${parseError.message}`);
+        // Default to suitable if we can't parse
+        return {
+          isSuitable: true,
+          reason: language === 'fr'
+            ? 'Photo acceptée pour le CV.'
+            : 'Photo accepted for CV.',
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Error analyzing CV picture with Gemini: ${error.message}`);
+      // On error, default to suitable to not block the user
+      return {
+        isSuitable: true,
+        reason: language === 'fr'
+          ? 'Photo acceptée (analyse automatique indisponible).'
+          : 'Photo accepted (automatic analysis unavailable).',
+      };
+    }
+  }
+
+  /**
    * Alternative: Generate using text-to-image prompts
    * This is a fallback method that generates descriptive prompts
    */
