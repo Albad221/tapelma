@@ -56,6 +56,12 @@ export class PDFService {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--single-process',
+          '--no-zygote',
+          '--disable-breakpad',
+          '--disable-crash-reporter',
         ],
       });
 
