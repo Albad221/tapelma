@@ -13,12 +13,30 @@ import { UserService } from '../user/user.service';
 @Controller('webhook')
 export class WhatsAppController {
   private readonly logger = new Logger(WhatsAppController.name);
+  // Cache to track processed message IDs (prevents duplicate processing)
+  private processedMessages: Map<string, number> = new Map();
+  // Cache to track messages being processed (prevents concurrent processing)
+  private processingMessages: Set<string> = new Set();
+  // Cleanup old entries every 5 minutes
+  private readonly MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private whatsappService: WhatsAppService,
     private conversationService: ConversationService,
     private userService: UserService,
-  ) {}
+  ) {
+    // Cleanup old message IDs periodically
+    setInterval(() => this.cleanupMessageCache(), this.MESSAGE_CACHE_TTL);
+  }
+
+  private cleanupMessageCache(): void {
+    const now = Date.now();
+    for (const [messageId, timestamp] of this.processedMessages.entries()) {
+      if (now - timestamp > this.MESSAGE_CACHE_TTL) {
+        this.processedMessages.delete(messageId);
+      }
+    }
+  }
 
   @Post('whatsapp')
   @HttpCode(200)
@@ -30,16 +48,6 @@ export class WhatsAppController {
       this.logger.log('Received WhatsApp webhook');
       this.logger.log(`Payload: ${JSON.stringify(payload, null, 2)}`);
 
-      // Validate webhook signature if needed
-      // const isValid = this.whatsappService.validateWebhookSignature(
-      //   JSON.stringify(payload),
-      //   signature,
-      // );
-      // if (!isValid) {
-      //   this.logger.warn('Invalid webhook signature');
-      //   return { status: 'rejected' };
-      // }
-
       // Parse incoming message
       const message = this.whatsappService.parseIncomingMessage(payload);
       if (!message) {
@@ -47,28 +55,54 @@ export class WhatsAppController {
         return { status: 'ignored' };
       }
 
-      // Mark message as read
-      if (message.messageId) {
-        await this.whatsappService.markMessageAsRead(message.messageId);
+      // Generate a unique key for deduplication (messageId + text + from)
+      const dedupeKey = message.messageId || `${message.from}-${message.text}-${message.timestamp}`;
+
+      // Check if this message was already processed (duplicate webhook)
+      if (this.processedMessages.has(dedupeKey)) {
+        this.logger.warn(`Duplicate message detected, skipping: ${dedupeKey}`);
+        return { status: 'duplicate' };
       }
 
-      // Check if message contains an image
-      if (message.type === 'image' && message.mediaId) {
-        this.logger.log('Image message received, processing...');
-        await this.conversationService.handleImageMessage(
-          message.from,
-          message.mediaId,
-          message.mediaUrl,
-        );
-      } else {
-        // Process text message through conversation flow
-        await this.conversationService.handleUserMessage(
-          message.from,
-          message.text,
-        );
+      // Check if this message is currently being processed (concurrent request)
+      if (this.processingMessages.has(dedupeKey)) {
+        this.logger.warn(`Message already being processed, skipping: ${dedupeKey}`);
+        return { status: 'processing' };
       }
 
-      return { status: 'processed' };
+      // Mark as processing
+      this.processingMessages.add(dedupeKey);
+
+      try {
+        // Mark message as read
+        if (message.messageId) {
+          await this.whatsappService.markMessageAsRead(message.messageId);
+        }
+
+        // Check if message contains an image
+        if (message.type === 'image' && message.mediaId) {
+          this.logger.log('Image message received, processing...');
+          await this.conversationService.handleImageMessage(
+            message.from,
+            message.mediaId,
+            message.mediaUrl,
+          );
+        } else {
+          // Process text message through conversation flow
+          await this.conversationService.handleUserMessage(
+            message.from,
+            message.text,
+          );
+        }
+
+        // Mark as processed with timestamp
+        this.processedMessages.set(dedupeKey, Date.now());
+
+        return { status: 'processed' };
+      } finally {
+        // Remove from processing set
+        this.processingMessages.delete(dedupeKey);
+      }
     } catch (error) {
       this.logger.error(`Error handling webhook: ${error.message}`);
       return { status: 'error', message: error.message };
