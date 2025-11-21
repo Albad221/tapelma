@@ -51,6 +51,13 @@ export class ConversationService {
         );
       }
 
+      // CRITICAL FIX: Handle "Non/No/Skip" responses at specific steps BEFORE calling OpenAI
+      // This ensures step progression happens deterministically, not relying on AI interpretation
+      const skipHandled = await this.handleSkipResponse(phoneNumber, session, message);
+      if (skipHandled) {
+        return; // Skip response was handled, no need to call OpenAI
+      }
+
       // Get conversation history from message logs
       const conversationHistory = await this.getConversationHistory(user.id);
       this.logger.log(`📜 CONVERSATION HISTORY (${conversationHistory.length} messages): ${JSON.stringify(conversationHistory.slice(-5), null, 2)}`); // Last 5 messages
@@ -274,6 +281,169 @@ export class ConversationService {
       role: msg.direction === 'inbound' ? ('user' as const) : ('assistant' as const),
       content: msg.content,
     }));
+  }
+
+  /**
+   * CRITICAL FIX: Handle "Non/No/Skip" responses at specific steps deterministically
+   * This prevents the AI from getting confused by conversation history and ensures
+   * proper step progression when user wants to skip a non-mandatory section.
+   *
+   * @returns true if the response was handled (skip detected), false otherwise
+   */
+  private async handleSkipResponse(
+    phoneNumber: string,
+    session: ConversationSession,
+    message: string,
+  ): Promise<boolean> {
+    const lowerMessage = message.toLowerCase().trim();
+
+    // Check if this is a skip/no response
+    const isSkipResponse = [
+      'non', 'no', 'skip', 'passer', 'aucun', 'aucune',
+      'pas de', 'none', 'nope', 'pas', 'rien',
+      'je n\'ai pas', 'i don\'t have', 'i dont have'
+    ].some(skip => lowerMessage.includes(skip) || lowerMessage === skip);
+
+    if (!isSkipResponse) {
+      return false; // Not a skip response, let OpenAI handle it
+    }
+
+    // Get mandatory fields from admin config
+    const mandatoryFields = this.adminService.getMandatoryFields();
+
+    // Define step progression and check if current step is mandatory
+    const stepProgression: Record<string, { nextStep: ConversationStep; fieldName: string; skipMessage: { fr: string; en: string } }> = {
+      [ConversationStep.WORK_EXPERIENCE]: {
+        nextStep: ConversationStep.EDUCATION,
+        fieldName: 'workExperience',
+        skipMessage: {
+          fr: "D'accord, passons à votre formation. Pouvez-vous me parler de vos études ? (établissement, diplôme, dates)",
+          en: "Okay, let's move to your education. Can you tell me about your studies? (institution, degree, dates)"
+        }
+      },
+      [ConversationStep.EDUCATION]: {
+        nextStep: ConversationStep.SKILLS,
+        fieldName: 'education',
+        skipMessage: {
+          fr: "D'accord, passons aux compétences. Quelles sont vos principales compétences professionnelles ?",
+          en: "Okay, let's move to skills. What are your main professional skills?"
+        }
+      },
+      [ConversationStep.SKILLS]: {
+        nextStep: ConversationStep.LANGUAGES_KNOWN,
+        fieldName: 'skills',
+        skipMessage: {
+          fr: "D'accord, passons aux langues. Quelles langues parlez-vous et à quel niveau ?",
+          en: "Okay, let's move to languages. What languages do you speak and at what level?"
+        }
+      },
+      [ConversationStep.LANGUAGES_KNOWN]: {
+        nextStep: ConversationStep.PROFESSIONAL_SUMMARY,
+        fieldName: 'languages',
+        skipMessage: {
+          fr: "D'accord, je vais maintenant générer un résumé professionnel basé sur vos informations...",
+          en: "Okay, I'll now generate a professional summary based on your information..."
+        }
+      },
+      [ConversationStep.PROFESSIONAL_SUMMARY]: {
+        nextStep: ConversationStep.CV_PICTURE,
+        fieldName: 'professionalSummary',
+        skipMessage: {
+          fr: "D'accord, pas de résumé. Souhaitez-vous ajouter une photo à votre CV ? Envoyez-moi une photo ou dites 'non'.",
+          en: "Okay, no summary. Would you like to add a photo to your CV? Send me a photo or say 'no'."
+        }
+      },
+      [ConversationStep.CV_PICTURE]: {
+        nextStep: ConversationStep.TEMPLATE_SELECTION,
+        fieldName: 'cvPicture',
+        skipMessage: {
+          fr: "D'accord, pas de photo. Choisissez maintenant votre modèle de CV parmi les options suivantes:",
+          en: "Okay, no photo. Now choose your CV template from the following options:"
+        }
+      },
+    };
+
+    const currentStepConfig = stepProgression[session.currentStep];
+
+    // If current step is not in our progression map, let OpenAI handle it
+    if (!currentStepConfig) {
+      return false;
+    }
+
+    // Check if this field is mandatory
+    const isMandatory = mandatoryFields.includes(currentStepConfig.fieldName);
+
+    if (isMandatory) {
+      // Field is mandatory - send insistence message and DON'T progress
+      const insistMessages: Record<string, { fr: string; en: string }> = {
+        workExperience: {
+          fr: "Une expérience professionnelle est OBLIGATOIRE pour votre CV. Même un stage, projet personnel ou bénévolat compte. Qu'avez-vous fait professionnellement ?",
+          en: "Work experience is REQUIRED for your CV. Even an internship, personal project or volunteer work counts. What have you done professionally?"
+        },
+        education: {
+          fr: "Votre formation est OBLIGATOIRE. Quel est votre dernier diplôme ou niveau d'études ?",
+          en: "Your education is REQUIRED. What is your latest degree or education level?"
+        },
+        skills: {
+          fr: "Au moins une compétence est OBLIGATOIRE. Que savez-vous faire ? (ex: communication, Excel, gestion...)",
+          en: "At least one skill is REQUIRED. What can you do? (e.g., communication, Excel, management...)"
+        },
+        languages: {
+          fr: "Au moins une langue est OBLIGATOIRE. Quelle(s) langue(s) parlez-vous ?",
+          en: "At least one language is REQUIRED. What language(s) do you speak?"
+        },
+      };
+
+      const insistMessage = insistMessages[currentStepConfig.fieldName];
+      if (insistMessage) {
+        const response = session.language === 'fr' ? insistMessage.fr : insistMessage.en;
+        await this.whatsappService.sendTextMessage(phoneNumber, response);
+
+        // Log the message
+        const user = await this.userService.findOrCreateUser(phoneNumber);
+        await this.userService.logMessage({
+          userId: user.id,
+          direction: 'outbound',
+          messageType: 'text',
+          content: response,
+        });
+
+        this.logger.log(`⚠️ MANDATORY FIELD - Insisted on ${currentStepConfig.fieldName}, staying at step ${session.currentStep}`);
+        return true; // Handled, don't call OpenAI
+      }
+      return false; // Let OpenAI handle if no insist message defined
+    }
+
+    // Field is NOT mandatory - progress to next step
+    this.logger.log(`✅ SKIP DETECTED at ${session.currentStep} - Progressing to ${currentStepConfig.nextStep}`);
+
+    // Update session to next step
+    await this.userService.updateSession(session.id, {
+      currentStep: currentStepConfig.nextStep,
+    });
+
+    // Send appropriate message
+    const skipMessage = session.language === 'fr'
+      ? currentStepConfig.skipMessage.fr
+      : currentStepConfig.skipMessage.en;
+
+    await this.whatsappService.sendTextMessage(phoneNumber, skipMessage);
+
+    // Log the message
+    const user = await this.userService.findOrCreateUser(phoneNumber);
+    await this.userService.logMessage({
+      userId: user.id,
+      direction: 'outbound',
+      messageType: 'text',
+      content: skipMessage,
+    });
+
+    // Special handling: if we just moved to template_selection, show template options
+    if (currentStepConfig.nextStep === ConversationStep.TEMPLATE_SELECTION) {
+      await this.proceedToTemplateSelection(phoneNumber, session);
+    }
+
+    return true; // Handled, don't call OpenAI
   }
 
   private async handleCVGeneration(
