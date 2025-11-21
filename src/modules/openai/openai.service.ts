@@ -526,14 +526,18 @@ Respond with a JSON object:
         { role: 'user', content: userMessage },
       ];
 
-      const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
-        messages,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-        max_tokens: 1000,
-        timeout: 30000, // 30 second timeout
-      });
+      const completion = await this.openai.chat.completions.create(
+        {
+          model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+          messages,
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+          max_tokens: 1000,
+        },
+        {
+          timeout: 30000, // 30 second timeout
+        }
+      );
 
       const rawContent = completion.choices[0].message.content || '{}';
       this.logger.log(`Raw OpenAI response: ${rawContent.substring(0, 500)}...`);
