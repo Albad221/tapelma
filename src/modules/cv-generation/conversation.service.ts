@@ -438,13 +438,29 @@ export class ConversationService {
         currentStep: ConversationStep.COMPLETED,
       });
 
-      // Send success message with download link
+      // Send the PDF directly to WhatsApp
+      const pdfFilename = `CV-${user.firstName || 'Professional'}-${user.lastName || ''}.pdf`.replace(/\s+/g, '-');
+      this.logger.log(`Sending PDF directly to WhatsApp: ${pdfFilename} (${pdfBuffer.length} bytes)`);
+
+      const pdfSent = await this.whatsappService.sendDocumentBuffer(
+        phoneNumber,
+        pdfBuffer,
+        pdfFilename,
+      );
+
+      if (pdfSent) {
+        this.logger.log('PDF sent successfully via WhatsApp');
+      } else {
+        this.logger.warn('Failed to send PDF via WhatsApp, user will need to use download link');
+      }
+
+      // Send success message with download link as backup
       const successMessage =
         session.language === 'fr'
-          ? `✅ Votre CV a été généré avec succès!\n\n📄 Titre: CV Professionnel\n🎨 Modèle: ${cvData.selectedTemplate || 'moderne'}\n\n📥 Télécharger: ${s3Url}\n\nMerci d'avoir utilisé notre générateur de CV! Si vous souhaitez créer un nouveau CV, envoyez simplement "restart".`
+          ? `✅ Votre CV a été généré avec succès!\n\n📄 Titre: CV Professionnel\n🎨 Modèle: ${cvData.selectedTemplate || 'moderne'}\n\n${pdfSent ? '📎 Le PDF a été envoyé ci-dessus.\n\n' : ''}📥 Lien de téléchargement: ${s3Url}\n\nMerci d'avoir utilisé notre générateur de CV! Si vous souhaitez créer un nouveau CV, envoyez simplement "restart".`
           : session.language === 'es'
-          ? `✅ ¡Tu CV se ha generado exitosamente!\n\n📄 Título: CV Profesional\n🎨 Plantilla: ${cvData.selectedTemplate || 'moderno'}\n\n📥 Descargar: ${s3Url}\n\nGracias por usar nuestro generador de CV! Si deseas crear un nuevo CV, simplemente envía "restart".`
-          : `✅ Your CV has been generated successfully!\n\n📄 Title: Professional CV\n🎨 Template: ${cvData.selectedTemplate || 'modern'}\n\n📥 Download: ${s3Url}\n\nThank you for using our CV generator! If you want to create a new CV, simply send "restart".`;
+          ? `✅ ¡Tu CV se ha generado exitosamente!\n\n📄 Título: CV Profesional\n🎨 Plantilla: ${cvData.selectedTemplate || 'moderno'}\n\n${pdfSent ? '📎 El PDF se envió arriba.\n\n' : ''}📥 Enlace de descarga: ${s3Url}\n\nGracias por usar nuestro generador de CV! Si deseas crear un nuevo CV, simplemente envía "restart".`
+          : `✅ Your CV has been generated successfully!\n\n📄 Title: Professional CV\n🎨 Template: ${cvData.selectedTemplate || 'modern'}\n\n${pdfSent ? '📎 The PDF was sent above.\n\n' : ''}📥 Download link: ${s3Url}\n\nThank you for using our CV generator! If you want to create a new CV, simply send "restart".`;
 
       await this.whatsappService.sendTextMessage(phoneNumber, successMessage);
 
