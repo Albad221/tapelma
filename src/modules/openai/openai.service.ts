@@ -362,7 +362,7 @@ Return ONLY the translated text.`;
       const hasLanguages = currentData.languages && currentData.languages.length > 0;
       const hasProfessionalSummary = !!currentData.professionalSummary;
 
-      const filledSections = [];
+      const filledSections: string[] = [];
       if (hasPersonalInfo) filledSections.push('personalInfo');
       if (hasWorkExperience) filledSections.push('workExperience');
       if (hasEducation) filledSections.push('education');
