@@ -17,6 +17,10 @@ export class WhatsAppController {
   private processedMessages: Map<string, number> = new Map();
   // Cache to track messages being processed (prevents concurrent processing)
   private processingMessages: Set<string> = new Set();
+  // Rate limiter: track last response time per user (prevents spam)
+  private lastResponseTime: Map<string, number> = new Map();
+  // Minimum time between responses to same user (3 seconds)
+  private readonly MIN_RESPONSE_INTERVAL = 3000;
   // Cleanup old entries every 5 minutes
   private readonly MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -34,6 +38,12 @@ export class WhatsAppController {
     for (const [messageId, timestamp] of this.processedMessages.entries()) {
       if (now - timestamp > this.MESSAGE_CACHE_TTL) {
         this.processedMessages.delete(messageId);
+      }
+    }
+    // Also cleanup rate limiter entries
+    for (const [userId, timestamp] of this.lastResponseTime.entries()) {
+      if (now - timestamp > this.MESSAGE_CACHE_TTL) {
+        this.lastResponseTime.delete(userId);
       }
     }
   }
@@ -70,6 +80,14 @@ export class WhatsAppController {
         return { status: 'processing' };
       }
 
+      // Rate limiting: check if we responded to this user recently
+      const lastResponse = this.lastResponseTime.get(message.from);
+      const now = Date.now();
+      if (lastResponse && (now - lastResponse) < this.MIN_RESPONSE_INTERVAL) {
+        this.logger.warn(`Rate limited: User ${message.from} - last response ${now - lastResponse}ms ago`);
+        return { status: 'rate_limited' };
+      }
+
       // Mark as processing
       this.processingMessages.add(dedupeKey);
 
@@ -97,6 +115,8 @@ export class WhatsAppController {
 
         // Mark as processed with timestamp
         this.processedMessages.set(dedupeKey, Date.now());
+        // Update rate limiter
+        this.lastResponseTime.set(message.from, Date.now());
 
         return { status: 'processed' };
       } finally {
