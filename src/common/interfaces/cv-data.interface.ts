@@ -23,10 +23,10 @@ export enum SessionStatus {
 }
 
 export interface PersonalInfo {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
   address?: string;
   city?: string;
   country?: string;
