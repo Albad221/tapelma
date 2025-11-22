@@ -58,6 +58,26 @@ export class ConversationService {
         return; // Skip response was handled, no need to call OpenAI
       }
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // HARD GATE: personalInfo MUST be complete before ANY other step
+      // This is a NON-NEGOTIABLE requirement - OpenAI cannot skip this
+      // ═══════════════════════════════════════════════════════════════════════
+      const hasRequiredPersonalInfo =
+        session.data?.personalInfo?.firstName &&
+        session.data?.personalInfo?.email;
+
+      if (!hasRequiredPersonalInfo && session.currentStep !== ConversationStep.GREETING && session.currentStep !== ConversationStep.LANGUAGE_SELECTION) {
+        // Force step back to personal_info if we don't have required data
+        this.logger.warn(`🚨 HARD GATE: Missing personal info (name+email). Forcing step to personal_info.`);
+        this.logger.log(`Current step was: ${session.currentStep}, data: ${JSON.stringify(session.data?.personalInfo || {})}`);
+
+        // Update session to personal_info step
+        await this.userService.updateSession(session.id, {
+          currentStep: ConversationStep.PERSONAL_INFO,
+        });
+        session.currentStep = ConversationStep.PERSONAL_INFO;
+      }
+
       // Get conversation history from message logs
       const conversationHistory = await this.getConversationHistory(user.id);
       this.logger.log(`📜 CONVERSATION HISTORY (${conversationHistory.length} messages): ${JSON.stringify(conversationHistory.slice(-5), null, 2)}`); // Last 5 messages
@@ -134,6 +154,28 @@ export class ConversationService {
            aiResponse.response.toLowerCase().includes('image'))) {
         this.logger.log(`✅ AUTO-ADVANCE: Response mentions photo, ensuring nextStep is cv_picture`);
         nextStep = ConversationStep.CV_PICTURE;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // FINAL SAFEGUARD: OpenAI cannot skip to any step beyond personal_info
+      // without name+email being present. This is an absolute hard block.
+      // ═══════════════════════════════════════════════════════════════════════
+      const stepsRequiringPersonalInfo = [
+        ConversationStep.WORK_EXPERIENCE,
+        ConversationStep.EDUCATION,
+        ConversationStep.SKILLS,
+        ConversationStep.LANGUAGES_KNOWN,
+        ConversationStep.PROFESSIONAL_SUMMARY,
+        ConversationStep.CV_PICTURE,
+        ConversationStep.TEMPLATE_SELECTION,
+        ConversationStep.GENERATION,
+      ];
+
+      const hasPersonalInfoNow = session.data?.personalInfo?.firstName && session.data?.personalInfo?.email;
+
+      if (stepsRequiringPersonalInfo.includes(nextStep) && !hasPersonalInfoNow) {
+        this.logger.warn(`🚫 FINAL BLOCK: OpenAI tried to skip to ${nextStep} without personal info. Forcing personal_info.`);
+        nextStep = ConversationStep.PERSONAL_INFO;
       }
 
       await this.userService.updateSession(session.id, {
