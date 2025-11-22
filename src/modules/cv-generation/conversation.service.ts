@@ -53,6 +53,27 @@ export class ConversationService {
         );
       }
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // CRITICAL: Ignore messages if session is already COMPLETED
+      // This prevents duplicate processing from webhook retries after CV generation
+      // ═══════════════════════════════════════════════════════════════════════
+      if (session.status === SessionStatus.COMPLETED || session.currentStep === ConversationStep.COMPLETED) {
+        // Only allow "restart" to create new session
+        const lowerMessage = message.toLowerCase().trim();
+        if (lowerMessage === 'restart' || lowerMessage === 'recommencer' || lowerMessage === 'nuevo') {
+          this.logger.log(`🔄 User requested restart from completed session`);
+          // Create a new session
+          session = await this.userService.createSession(
+            user.id,
+            user.preferredLanguage,
+          );
+        } else {
+          this.logger.log(`⏹️ Session already COMPLETED. Ignoring message. User should type "restart" to begin again.`);
+          // Don't respond at all to prevent spam - the user already got their CV
+          return;
+        }
+      }
+
       // CRITICAL FIX: Handle "Non/No/Skip" responses at specific steps BEFORE calling OpenAI
       // This ensures step progression happens deterministically, not relying on AI interpretation
       const skipHandled = await this.handleSkipResponse(phoneNumber, session, message);
