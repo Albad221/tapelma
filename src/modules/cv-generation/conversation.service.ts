@@ -104,6 +104,38 @@ export class ConversationService {
         nextStep = ConversationStep.PERSONAL_INFO;
       }
 
+      // AUTO-ADVANCE SAFEGUARD: If we have name+email at personal_info, always advance
+      // This prevents OpenAI from getting stuck and re-asking for already-collected data
+      if (session.currentStep === ConversationStep.PERSONAL_INFO &&
+          nextStep === ConversationStep.PERSONAL_INFO &&
+          session.data?.personalInfo?.firstName &&
+          session.data?.personalInfo?.email) {
+        this.logger.log(`✅ AUTO-ADVANCE: Have name+email at personal_info, advancing to work_experience`);
+        nextStep = ConversationStep.WORK_EXPERIENCE;
+      }
+
+      // AUTO-ADVANCE SAFEGUARD: If we have professionalSummary and user said "oui/yes" at PROFESSIONAL_SUMMARY step
+      // Ensure we advance to CV_PICTURE - OpenAI sometimes doesn't return the correct nextStep
+      const lowerMsg = message?.toLowerCase().trim() || '';
+      const isConfirmation = ['oui', 'yes', 'ok', 'parfait', 'génial', 'super', 'd\'accord', 'daccord', 'c\'est bon', 'cest bon'].some(c => lowerMsg.includes(c));
+      if (session.currentStep === ConversationStep.PROFESSIONAL_SUMMARY &&
+          session.data?.professionalSummary &&
+          isConfirmation) {
+        this.logger.log(`✅ AUTO-ADVANCE: User confirmed professional summary with "${message}", advancing to cv_picture`);
+        nextStep = ConversationStep.CV_PICTURE;
+      }
+
+      // Also: If OpenAI says we're at cv_picture but returns a different nextStep, override
+      // This handles cases where response mentions photo but nextStep is wrong
+      if (session.currentStep === ConversationStep.PROFESSIONAL_SUMMARY &&
+          aiResponse.response &&
+          (aiResponse.response.toLowerCase().includes('photo') ||
+           aiResponse.response.toLowerCase().includes('picture') ||
+           aiResponse.response.toLowerCase().includes('image'))) {
+        this.logger.log(`✅ AUTO-ADVANCE: Response mentions photo, ensuring nextStep is cv_picture`);
+        nextStep = ConversationStep.CV_PICTURE;
+      }
+
       await this.userService.updateSession(session.id, {
         currentStep: nextStep,
         data: session.data,
@@ -1407,13 +1439,26 @@ export class ConversationService {
       this.logger.log(`📸 IMAGE RECEIVED - Current step: "${session.currentStep}" (expected: "${ConversationStep.CV_PICTURE}")`);
       this.logger.log(`📸 Step comparison: currentStep="${session.currentStep}" === CV_PICTURE="${ConversationStep.CV_PICTURE}" ? ${session.currentStep === ConversationStep.CV_PICTURE}`);
 
-      // Accept images during cv_picture step OR professional_summary (in case step wasn't updated yet)
-      // This handles the edge case where user sends image quickly after saying "oui"
-      const acceptableSteps = [ConversationStep.CV_PICTURE, ConversationStep.PROFESSIONAL_SUMMARY];
+      // EXPANDED ACCEPTABLE STEPS:
+      // Accept images during multiple steps to handle edge cases where:
+      // - Step wasn't updated yet after user confirmed summary
+      // - User sent photo before OpenAI response was processed
+      // - Flow variations where photo is sent earlier/later
+      const acceptableSteps = [
+        ConversationStep.CV_PICTURE,           // Primary expected step
+        ConversationStep.PROFESSIONAL_SUMMARY, // Just before cv_picture
+        ConversationStep.LANGUAGES_KNOWN,      // If professional_summary was skipped
+        ConversationStep.TEMPLATE_SELECTION,   // If they send photo late, still accept
+      ];
       const isAcceptableStep = acceptableSteps.includes(session.currentStep as ConversationStep);
 
-      if (!isAcceptableStep) {
-        this.logger.warn(`📸 REJECTED - Step "${session.currentStep}" not in acceptable steps: ${acceptableSteps.join(', ')}`);
+      // SAFETY NET: If we have a professional summary (meaning we passed that step),
+      // ALWAYS accept photos regardless of what step we think we're at
+      const hasProfessionalSummary = !!session.data?.professionalSummary;
+      const forceAcceptPhoto = hasProfessionalSummary && !session.data?.cvPictureUrl;
+
+      if (!isAcceptableStep && !forceAcceptPhoto) {
+        this.logger.warn(`📸 REJECTED - Step "${session.currentStep}" not in acceptable steps: ${acceptableSteps.join(', ')}, hasSummary=${hasProfessionalSummary}`);
         await this.whatsappService.sendTextMessage(
           phoneNumber,
           session.language === 'fr'
@@ -1421,6 +1466,10 @@ export class ConversationService {
             : "I'm not expecting a photo right now. Let's continue with text information.",
         );
         return;
+      }
+
+      if (forceAcceptPhoto && !isAcceptableStep) {
+        this.logger.log(`📸 FORCE ACCEPT - Has professional summary, no CV picture yet. Overriding step check.`);
       }
 
       this.logger.log(`📸 ACCEPTED - Processing image at step "${session.currentStep}"`);
