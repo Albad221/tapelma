@@ -6,6 +6,7 @@ import { GeminiService } from '../gemini/gemini.service';
 import { PDFService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { AdminService } from '../admin/admin.service';
+import { StepHandlerService } from './step-handler.service';
 import {
   ConversationStep,
   SessionStatus,
@@ -27,6 +28,7 @@ export class ConversationService {
     private pdfService: PDFService,
     private storageService: StorageService,
     private adminService: AdminService,
+    private stepHandler: StepHandlerService,
   ) {}
 
   async handleUserMessage(phoneNumber: string, message: string): Promise<void> {
@@ -153,116 +155,59 @@ export class ConversationService {
         }
       }
 
-      // Update session with new step and data
-      // Convert OpenAI's uppercase response to the enum value
-      let nextStep = this.normalizeConversationStep(aiResponse.nextStep);
-
-      // CRITICAL SAFEGUARD: Never advance past personal_info without email
-      // This prevents OpenAI from incorrectly advancing the step
-      if (session.currentStep === ConversationStep.PERSONAL_INFO &&
-          nextStep !== ConversationStep.PERSONAL_INFO &&
-          !session.data?.personalInfo?.email) {
-        this.logger.warn(`⚠️ BLOCKED: Attempted to advance from personal_info without email. Keeping at personal_info.`);
-        nextStep = ConversationStep.PERSONAL_INFO;
-      }
-
-      // AUTO-ADVANCE SAFEGUARD: If we have name+email at personal_info, always advance
-      // This prevents OpenAI from getting stuck and re-asking for already-collected data
-      if (session.currentStep === ConversationStep.PERSONAL_INFO &&
-          nextStep === ConversationStep.PERSONAL_INFO &&
-          session.data?.personalInfo?.firstName &&
-          session.data?.personalInfo?.email) {
-        this.logger.log(`✅ AUTO-ADVANCE: Have name+email at personal_info, advancing to work_experience`);
-        nextStep = ConversationStep.WORK_EXPERIENCE;
-      }
-
-      // AUTO-ADVANCE SAFEGUARD: Handle confirmations at various steps
-      const lowerMsg = message?.toLowerCase().trim() || '';
-      const isConfirmation = ['oui', 'yes', 'ok', 'parfait', 'génial', 'super', 'd\'accord', 'daccord', 'c\'est bon', 'cest bon'].some(c => lowerMsg.includes(c));
-
-      // At LANGUAGES_KNOWN: If user confirms, advance to PROFESSIONAL_SUMMARY
-      if (session.currentStep === ConversationStep.LANGUAGES_KNOWN &&
-          session.data?.languages && session.data.languages.length > 0 &&
-          isConfirmation) {
-        this.logger.log(`✅ AUTO-ADVANCE: User confirmed languages with "${message}", advancing to professional_summary`);
-        nextStep = ConversationStep.PROFESSIONAL_SUMMARY;
-      }
-
-      // At PROFESSIONAL_SUMMARY: If we have summary and user confirms, advance to CV_PICTURE
-      if (session.currentStep === ConversationStep.PROFESSIONAL_SUMMARY &&
-          session.data?.professionalSummary &&
-          isConfirmation) {
-        this.logger.log(`✅ AUTO-ADVANCE: User confirmed professional summary with "${message}", advancing to cv_picture`);
-        nextStep = ConversationStep.CV_PICTURE;
-      }
-
-      // Also: If OpenAI says we're at cv_picture but returns a different nextStep, override
-      // This handles cases where response mentions photo but nextStep is wrong
-      if (session.currentStep === ConversationStep.PROFESSIONAL_SUMMARY &&
-          aiResponse.response &&
-          (aiResponse.response.toLowerCase().includes('photo') ||
-           aiResponse.response.toLowerCase().includes('picture') ||
-           aiResponse.response.toLowerCase().includes('image'))) {
-        this.logger.log(`✅ AUTO-ADVANCE: Response mentions photo, ensuring nextStep is cv_picture`);
-        nextStep = ConversationStep.CV_PICTURE;
-      }
-
       // ═══════════════════════════════════════════════════════════════════════
-      // NO BACKWARDS SAFEGUARD: OpenAI can NEVER go backwards in the flow
-      // This is CRITICAL - once we've passed a step, we can't return to it
+      // DETERMINISTIC STEP HANDLING - Uses StepHandler based on admin config
+      // OpenAI suggests nextStep but StepHandler makes the FINAL decision
       // ═══════════════════════════════════════════════════════════════════════
-      const stepOrder = [
-        ConversationStep.GREETING,
-        ConversationStep.LANGUAGE_SELECTION,
-        ConversationStep.PERSONAL_INFO,
-        ConversationStep.WORK_EXPERIENCE,
-        ConversationStep.EDUCATION,
-        ConversationStep.SKILLS,
-        ConversationStep.LANGUAGES_KNOWN,
-        ConversationStep.PROFESSIONAL_SUMMARY,
-        ConversationStep.CV_PICTURE,
-        ConversationStep.TEMPLATE_SELECTION,
-        ConversationStep.REVIEW,
-        ConversationStep.GENERATION,
-        ConversationStep.COMPLETED,
-      ];
 
-      const currentStepIndex = stepOrder.indexOf(session.currentStep);
-      const nextStepIndex = stepOrder.indexOf(nextStep);
+      // Get OpenAI's suggested step (but we may override it)
+      const suggestedStep = this.normalizeConversationStep(aiResponse.nextStep);
 
-      // If OpenAI suggests going backwards, keep the current step instead
-      if (nextStepIndex >= 0 && currentStepIndex >= 0 && nextStepIndex < currentStepIndex) {
-        this.logger.warn(`🚫 NO BACKWARDS: OpenAI tried to go from ${session.currentStep} back to ${nextStep}. Keeping current step.`);
-        // If user said "oui/ok", advance to the NEXT step instead of going backwards
-        if (isConfirmation) {
-          // Find the next valid step (current + 1)
-          const advanceToIndex = Math.min(currentStepIndex + 1, stepOrder.length - 1);
-          nextStep = stepOrder[advanceToIndex];
-          this.logger.log(`✅ User confirmed, advancing to: ${nextStep}`);
-        } else {
-          nextStep = session.currentStep;
+      // Use StepHandler to determine what action to take
+      const stepAction = this.stepHandler.determineAction(
+        session.currentStep,
+        message,
+        session.data,
+      );
+
+      this.logger.log(`🎯 STEP HANDLER: action=${stepAction.action}, nextStep=${stepAction.nextStep}, reason=${stepAction.reason}`);
+      this.logger.log(`📊 OpenAI suggested: ${suggestedStep}, StepHandler decided: ${stepAction.nextStep}`);
+
+      // StepHandler has the FINAL say on step navigation
+      let nextStep = stepAction.nextStep;
+
+      // Only use OpenAI's suggestion if it matches or is further along (never go backwards)
+      const currentIdx = this.stepHandler.getStepIndex(session.currentStep);
+      const suggestedIdx = this.stepHandler.getStepIndex(suggestedStep);
+      const handlerIdx = this.stepHandler.getStepIndex(stepAction.nextStep);
+
+      // If OpenAI suggests a further step AND requirements are met, use it
+      if (suggestedIdx > handlerIdx && suggestedIdx > currentIdx) {
+        const requirements = this.stepHandler.areStepRequirementsMet(session.currentStep, session.data);
+        if (requirements.met) {
+          this.logger.log(`📈 Using OpenAI's further step suggestion: ${suggestedStep}`);
+          nextStep = suggestedStep;
         }
       }
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // FINAL SAFEGUARD: OpenAI cannot skip to any step beyond personal_info
-      // without name+email being present. This is an absolute hard block.
-      // ═══════════════════════════════════════════════════════════════════════
-      const stepsRequiringPersonalInfo = [
-        ConversationStep.WORK_EXPERIENCE,
-        ConversationStep.EDUCATION,
-        ConversationStep.SKILLS,
-        ConversationStep.LANGUAGES_KNOWN,
-        ConversationStep.PROFESSIONAL_SUMMARY,
-        ConversationStep.CV_PICTURE,
-        ConversationStep.TEMPLATE_SELECTION,
-        ConversationStep.GENERATION,
-      ];
+      // ABSOLUTE RULE: Never go backwards
+      if (this.stepHandler.getStepIndex(nextStep) < currentIdx) {
+        this.logger.warn(`🚫 BLOCKED BACKWARDS: ${nextStep} is before ${session.currentStep}. Keeping current.`);
+        nextStep = session.currentStep;
 
-      const hasPersonalInfoNow = session.data?.personalInfo?.firstName && session.data?.personalInfo?.email;
+        // If user confirmed, advance to next step
+        if (this.stepHandler.isConfirmationMessage(message)) {
+          nextStep = this.stepHandler.getNextStep(session.currentStep);
+          this.logger.log(`✅ User confirmed, advancing to: ${nextStep}`);
+        }
+      }
 
-      if (stepsRequiringPersonalInfo.includes(nextStep) && !hasPersonalInfoNow) {
-        this.logger.warn(`🚫 FINAL BLOCK: OpenAI tried to skip to ${nextStep} without personal info. Forcing personal_info.`);
+      // ABSOLUTE RULE: personalInfo must be complete before any later step
+      const hasPersonalInfo = session.data?.personalInfo?.firstName && session.data?.personalInfo?.email;
+      const personalInfoIdx = this.stepHandler.getStepIndex(ConversationStep.PERSONAL_INFO);
+
+      if (this.stepHandler.getStepIndex(nextStep) > personalInfoIdx && !hasPersonalInfo) {
+        this.logger.warn(`🚫 BLOCKED: Cannot advance to ${nextStep} without personalInfo`);
         nextStep = ConversationStep.PERSONAL_INFO;
       }
 

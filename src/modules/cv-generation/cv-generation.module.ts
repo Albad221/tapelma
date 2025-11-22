@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { CVGenerationService } from './cv-generation.service';
 import { ConversationService } from './conversation.service';
+import { StepHandlerService } from './step-handler.service';
 import { PictureTestController } from './picture-test.controller';
 import { UserModule } from '../user/user.module';
 import { OpenAIModule } from '../openai/openai.module';
@@ -21,7 +22,7 @@ import { AdminModule } from '../admin/admin.module';
     forwardRef(() => WhatsAppModule),
   ],
   controllers: [PictureTestController],
-  providers: [CVGenerationService, ConversationService],
-  exports: [CVGenerationService, ConversationService],
+  providers: [CVGenerationService, ConversationService, StepHandlerService],
+  exports: [CVGenerationService, ConversationService, StepHandlerService],
 })
 export class CVGenerationModule {}
