@@ -110,42 +110,50 @@ export class WhatsAppController {
       this.processingMessages.add(dedupeKey);
       this.processingMessages.add(userLockKey);
 
-      try {
-        // Mark message as read
-        if (message.messageId) {
-          await this.whatsappService.markMessageAsRead(message.messageId);
+      // Mark as processed IMMEDIATELY with timestamp (before async processing)
+      // This prevents WATI retries from being processed
+      this.processedMessages.set(dedupeKey, Date.now());
+      const recentKey = `recent-${message.from}-${message.text?.toLowerCase().trim().substring(0, 50) || ''}`;
+      this.processedMessages.set(recentKey, Date.now());
+      this.lastResponseTime.set(message.from, Date.now());
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // CRITICAL: Process message in background, return 200 OK immediately
+      // This prevents WATI from timing out and retrying the webhook
+      // ═══════════════════════════════════════════════════════════════════════
+      setImmediate(async () => {
+        try {
+          // Mark message as read
+          if (message.messageId) {
+            await this.whatsappService.markMessageAsRead(message.messageId);
+          }
+
+          // Check if message contains an image
+          if (message.type === 'image' && message.mediaId) {
+            this.logger.log('Image message received, processing...');
+            await this.conversationService.handleImageMessage(
+              message.from,
+              message.mediaId,
+              message.mediaUrl,
+            );
+          } else {
+            // Process text message through conversation flow
+            await this.conversationService.handleUserMessage(
+              message.from,
+              message.text,
+            );
+          }
+        } catch (error) {
+          this.logger.error(`Error processing message in background: ${error.message}`);
+        } finally {
+          // Remove from processing sets (both message-level and user-level)
+          this.processingMessages.delete(dedupeKey);
+          this.processingMessages.delete(`user-${message.from}`);
         }
+      });
 
-        // Check if message contains an image
-        if (message.type === 'image' && message.mediaId) {
-          this.logger.log('Image message received, processing...');
-          await this.conversationService.handleImageMessage(
-            message.from,
-            message.mediaId,
-            message.mediaUrl,
-          );
-        } else {
-          // Process text message through conversation flow
-          await this.conversationService.handleUserMessage(
-            message.from,
-            message.text,
-          );
-        }
-
-        // Mark as processed with timestamp
-        this.processedMessages.set(dedupeKey, Date.now());
-        // Also mark the recent message key to catch content-based duplicates
-        const recentKey = `recent-${message.from}-${message.text?.toLowerCase().trim().substring(0, 50) || ''}`;
-        this.processedMessages.set(recentKey, Date.now());
-        // Update rate limiter
-        this.lastResponseTime.set(message.from, Date.now());
-
-        return { status: 'processed' };
-      } finally {
-        // Remove from processing sets (both message-level and user-level)
-        this.processingMessages.delete(dedupeKey);
-        this.processingMessages.delete(`user-${message.from}`);
-      }
+      // Return immediately - don't wait for processing
+      return { status: 'accepted' };
     } catch (error) {
       this.logger.error(`Error handling webhook: ${error.message}`);
       return { status: 'error', message: error.message };
