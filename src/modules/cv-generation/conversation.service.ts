@@ -93,7 +93,17 @@ export class ConversationService {
 
       // Update session with new step and data
       // Convert OpenAI's uppercase response to the enum value
-      const nextStep = this.normalizeConversationStep(aiResponse.nextStep);
+      let nextStep = this.normalizeConversationStep(aiResponse.nextStep);
+
+      // CRITICAL SAFEGUARD: Never advance past personal_info without email
+      // This prevents OpenAI from incorrectly advancing the step
+      if (session.currentStep === ConversationStep.PERSONAL_INFO &&
+          nextStep !== ConversationStep.PERSONAL_INFO &&
+          !session.data?.personalInfo?.email) {
+        this.logger.warn(`⚠️ BLOCKED: Attempted to advance from personal_info without email. Keeping at personal_info.`);
+        nextStep = ConversationStep.PERSONAL_INFO;
+      }
+
       await this.userService.updateSession(session.id, {
         currentStep: nextStep,
         data: session.data,
@@ -132,9 +142,26 @@ export class ConversationService {
     };
 
     // Helper to check if two education entries are duplicates
+    // Uses case-insensitive and trimmed comparison, also checks fieldOfStudy
     const isDuplicateEducation = (edu1: any, edu2: any) => {
-      return edu1.institution === edu2.institution &&
-             edu1.degree === edu2.degree;
+      const normalize = (str: string) => (str || '').toLowerCase().trim();
+      const inst1 = normalize(edu1.institution);
+      const inst2 = normalize(edu2.institution);
+      const deg1 = normalize(edu1.degree);
+      const deg2 = normalize(edu2.degree);
+      const field1 = normalize(edu1.fieldOfStudy);
+      const field2 = normalize(edu2.fieldOfStudy);
+
+      // Same institution + same degree = duplicate
+      // OR same institution + same field of study = duplicate
+      // OR same degree + same field of study = duplicate (handles cases where institution varies)
+      const sameInstitution = inst1 === inst2 && inst1 !== '';
+      const sameDegree = deg1 === deg2 && deg1 !== '';
+      const sameField = field1 === field2 && field1 !== '';
+
+      return (sameInstitution && sameDegree) ||
+             (sameInstitution && sameField) ||
+             (sameDegree && sameField);
     };
 
     // Helper to check if skill already exists
@@ -297,12 +324,26 @@ export class ConversationService {
   ): Promise<boolean> {
     const lowerMessage = message.toLowerCase().trim();
 
-    // Check if this is a skip/no response
-    const isSkipResponse = [
+    // NEVER intercept at personal_info step - it's always mandatory and needs full AI handling
+    // This prevents "pas de mail" from being treated as a skip when user is providing info
+    if (session.currentStep === ConversationStep.PERSONAL_INFO) {
+      return false; // Let OpenAI handle personal info - it will insist on email
+    }
+
+    // Check if this is a PURE skip/no response (not mixed with other content)
+    // Only trigger on short, clear skip messages to avoid false positives
+    const pureSkipPatterns = [
       'non', 'no', 'skip', 'passer', 'aucun', 'aucune',
-      'pas de', 'none', 'nope', 'pas', 'rien',
-      'je n\'ai pas', 'i don\'t have', 'i dont have'
-    ].some(skip => lowerMessage.includes(skip) || lowerMessage === skip);
+      'none', 'nope', 'rien', 'pas pour moi', 'je passe'
+    ];
+
+    // For longer messages with "pas de" or similar, only trigger if the message is primarily a skip
+    const isShortMessage = lowerMessage.length < 30;
+    const isPureSkip = pureSkipPatterns.some(skip => lowerMessage === skip);
+    const containsSkipPhrase = ['pas de', 'je n\'ai pas', 'i don\'t have', 'i dont have'].some(skip => lowerMessage.includes(skip));
+
+    // Only treat as skip if: pure skip word OR (short message with skip phrase)
+    const isSkipResponse = isPureSkip || (isShortMessage && containsSkipPhrase);
 
     if (!isSkipResponse) {
       return false; // Not a skip response, let OpenAI handle it
@@ -539,6 +580,10 @@ export class ConversationService {
       } else {
         this.logger.log(`Using professional summary from conversation: ${professionalSummary}`);
       }
+
+      // IMPORTANT: Add the professional summary back to cvData so it's included in the PDF
+      cvData.professionalSummary = professionalSummary;
+      this.logger.log(`Professional summary set in cvData: ${professionalSummary?.substring(0, 100)}...`);
 
       // Optimize work experience descriptions if any exist
       if (cvData.workExperiences && cvData.workExperiences.length > 0) {
@@ -1324,6 +1369,8 @@ export class ConversationService {
       'SKILLS': ConversationStep.SKILLS,
       'LANGUAGES_KNOWN': ConversationStep.LANGUAGES_KNOWN,
       'CERTIFICATIONS': ConversationStep.CERTIFICATIONS,
+      'PROFESSIONAL_SUMMARY': ConversationStep.PROFESSIONAL_SUMMARY,
+      'CV_PICTURE': ConversationStep.CV_PICTURE,
       'TEMPLATE_SELECTION': ConversationStep.TEMPLATE_SELECTION,
       'REVIEW': ConversationStep.REVIEW,
       'GENERATION': ConversationStep.GENERATION,
@@ -1356,8 +1403,17 @@ export class ConversationService {
         return;
       }
 
-      // Only process images during the cv_picture step
-      if (session.currentStep !== ConversationStep.CV_PICTURE) {
+      // Debug: Log current step info
+      this.logger.log(`📸 IMAGE RECEIVED - Current step: "${session.currentStep}" (expected: "${ConversationStep.CV_PICTURE}")`);
+      this.logger.log(`📸 Step comparison: currentStep="${session.currentStep}" === CV_PICTURE="${ConversationStep.CV_PICTURE}" ? ${session.currentStep === ConversationStep.CV_PICTURE}`);
+
+      // Accept images during cv_picture step OR professional_summary (in case step wasn't updated yet)
+      // This handles the edge case where user sends image quickly after saying "oui"
+      const acceptableSteps = [ConversationStep.CV_PICTURE, ConversationStep.PROFESSIONAL_SUMMARY];
+      const isAcceptableStep = acceptableSteps.includes(session.currentStep as ConversationStep);
+
+      if (!isAcceptableStep) {
+        this.logger.warn(`📸 REJECTED - Step "${session.currentStep}" not in acceptable steps: ${acceptableSteps.join(', ')}`);
         await this.whatsappService.sendTextMessage(
           phoneNumber,
           session.language === 'fr'
@@ -1366,6 +1422,8 @@ export class ConversationService {
         );
         return;
       }
+
+      this.logger.log(`📸 ACCEPTED - Processing image at step "${session.currentStep}"`);
 
       // Download the image
       this.logger.log('Downloading image from WhatsApp...');

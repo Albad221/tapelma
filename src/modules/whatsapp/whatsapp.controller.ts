@@ -65,13 +65,25 @@ export class WhatsAppController {
         return { status: 'ignored' };
       }
 
-      // Generate a unique key for deduplication (messageId + text + from)
-      const dedupeKey = message.messageId || `${message.from}-${message.text}-${message.timestamp}`;
+      // Generate a unique key for deduplication
+      // Use messageId if available, otherwise use from + normalized text (ignoring timestamp to catch retries)
+      const normalizedText = message.text?.toLowerCase().trim().substring(0, 50) || '';
+      const dedupeKey = message.messageId || `${message.from}-${normalizedText}`;
 
       // Check if this message was already processed (duplicate webhook)
       if (this.processedMessages.has(dedupeKey)) {
-        this.logger.warn(`Duplicate message detected, skipping: ${dedupeKey}`);
+        this.logger.warn(`Duplicate message detected (by key), skipping: ${dedupeKey}`);
         return { status: 'duplicate' };
+      }
+
+      // Additional check: if we received a very similar message from this user recently (within 10s)
+      // This catches duplicates even when messageId differs
+      const recentMessageKey = `recent-${message.from}-${normalizedText}`;
+      const recentTime = this.processedMessages.get(recentMessageKey);
+      const now = Date.now();
+      if (recentTime && (now - recentTime) < 10000) { // 10 second window
+        this.logger.warn(`Duplicate message detected (by content within 10s), skipping: ${normalizedText}`);
+        return { status: 'duplicate_recent' };
       }
 
       // Check if this message is currently being processed (concurrent request)
@@ -82,7 +94,6 @@ export class WhatsAppController {
 
       // Rate limiting: check if we responded to this user recently (increased to 5 seconds)
       const lastResponse = this.lastResponseTime.get(message.from);
-      const now = Date.now();
       if (lastResponse && (now - lastResponse) < this.MIN_RESPONSE_INTERVAL) {
         this.logger.warn(`Rate limited: User ${message.from} - last response ${now - lastResponse}ms ago`);
         return { status: 'rate_limited' };
@@ -123,6 +134,9 @@ export class WhatsAppController {
 
         // Mark as processed with timestamp
         this.processedMessages.set(dedupeKey, Date.now());
+        // Also mark the recent message key to catch content-based duplicates
+        const recentKey = `recent-${message.from}-${message.text?.toLowerCase().trim().substring(0, 50) || ''}`;
+        this.processedMessages.set(recentKey, Date.now());
         // Update rate limiter
         this.lastResponseTime.set(message.from, Date.now());
 

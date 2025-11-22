@@ -47,7 +47,7 @@ Return ONLY the bullet points in ${targetLanguage}, formatted as a list with "- 
 
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -98,7 +98,7 @@ Create a professional summary in ${targetLanguage} that:
 Return ONLY the professional summary without any title or explanation.`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -150,7 +150,7 @@ Consider:
 Return ONLY the JSON object, no additional text.`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -208,7 +208,7 @@ Create a cover letter in ${targetLanguage} that:
 Return the complete cover letter.`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -283,7 +283,7 @@ User Message: "${message}"
 Extract the information and return ONLY a valid JSON object. Be intelligent about parsing names, dates, and other information from natural language.`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -317,7 +317,7 @@ ${content}
 Return ONLY the translated text.`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -492,21 +492,25 @@ RESPONSE FORMAT (JSON):
   "shouldContinue": true (or false ONLY at template_selection when user selects a template)
 }`;
 
-      // Limit conversation history to last 10 messages to avoid token limits
-      const limitedHistory = conversationHistory.slice(-10);
+      // Limit conversation history to last 5 messages to reduce token usage
+      const limitedHistory = conversationHistory.slice(-5);
       const limitedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },
         ...limitedHistory,
         { role: 'user', content: userMessage },
       ];
 
+      // Use gpt-4o-mini by default - 60x cheaper than gpt-4-turbo
+      // Override with OPENAI_MODEL env var if needed
+      const model = this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
+
       const completion = await this.openai.chat.completions.create(
         {
-          model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4-turbo-preview',
+          model,
           messages: limitedMessages,
           temperature: 0.7,
           response_format: { type: 'json_object' },
-          max_tokens: 2000,
+          max_tokens: 800, // Reduced from 2000 - CV responses don't need that much
         },
         {
           timeout: 60000, // 60 second timeout
