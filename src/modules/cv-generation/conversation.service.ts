@@ -85,20 +85,58 @@ export class ConversationService {
       this.logger.log(`📜 CONVERSATION HISTORY (${conversationHistory.length} messages): ${JSON.stringify(conversationHistory.slice(-5), null, 2)}`); // Last 5 messages
 
       // ═══════════════════════════════════════════════════════════════════════
-      // DIRECT EXTRACTION: Extract email and phone with regex BEFORE OpenAI
+      // DIRECT EXTRACTION: Extract name, email and phone with regex BEFORE OpenAI
       // This ensures we don't miss obvious data even if OpenAI fails
       // ═══════════════════════════════════════════════════════════════════════
       const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
       const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{2,4}[-.\s]?\d{2,4}[-.\s]?\d{0,4}/g;
 
+      // Name extraction patterns (French and English)
+      // Matches: "je m'appelle X", "jsuis X", "my name is X", "I'm X", "moi c'est X", "je suis X"
+      // Also matches standalone names at beginning: "Aliou Mbengue, ..." or "Aliou, ..."
+      // Case-insensitive to handle users typing in lowercase
+      const namePatterns = [
+        /(?:je\s*m['']appelle|jsuis|je\s*suis|moi\s*c['']est|my\s*name\s*is|i['']?m)\s+([a-zA-ZÀ-ÿ]+(?:\s+[a-zA-ZÀ-ÿ]+)?)/i,
+        /^([a-zA-ZÀ-ÿ]+(?:\s+[a-zA-ZÀ-ÿ]+)?)\s*[,\n]/i,  // Name at start followed by comma or newline
+        /^([a-zA-ZÀ-ÿ]+\s+[a-zA-ZÀ-ÿ]+)\s/i,  // "Firstname Lastname " at start of message
+      ];
+
+      // Helper to capitalize first letter
+      const capitalizeFirst = (str: string): string => {
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      };
+
       const emailMatch = message.match(emailRegex);
       const phoneMatch = message.match(phoneRegex);
+
+      // Initialize personalInfo if needed
+      if (!session.data.personalInfo) session.data.personalInfo = {};
+
+      // Pre-extract name if found in message (only at personal_info step)
+      if (session.currentStep === ConversationStep.PERSONAL_INFO && !session.data.personalInfo.firstName) {
+        for (const pattern of namePatterns) {
+          const nameMatch = message.match(pattern);
+          if (nameMatch && nameMatch[1]) {
+            const fullName = nameMatch[1].trim();
+            const nameParts = fullName.split(/\s+/);
+            // Capitalize names properly
+            const firstName = capitalizeFirst(nameParts[0]);
+            const lastName = nameParts.slice(1).map(capitalizeFirst).join(' ') || '';
+
+            this.logger.log(`👤 DIRECT EXTRACTION: Found name in message: "${fullName}" -> firstName="${firstName}", lastName="${lastName}"`);
+            session.data.personalInfo.firstName = firstName;
+            if (lastName) {
+              session.data.personalInfo.lastName = lastName;
+            }
+            break; // Stop after first match
+          }
+        }
+      }
 
       // Pre-extract email if found in message
       if (emailMatch && emailMatch[0]) {
         const extractedEmail = emailMatch[0].trim();
         this.logger.log(`📧 DIRECT EXTRACTION: Found email in message: ${extractedEmail}`);
-        if (!session.data.personalInfo) session.data.personalInfo = {};
         if (!session.data.personalInfo.email) {
           session.data.personalInfo.email = extractedEmail;
           this.logger.log(`📧 SAVED email directly: ${extractedEmail}`);
@@ -110,7 +148,6 @@ export class ConversationService {
         const digits = phoneMatch[0].replace(/\D/g, '');
         if (digits.length >= 6 && digits.length <= 15) {
           this.logger.log(`📱 DIRECT EXTRACTION: Found phone in message: ${phoneMatch[0]}`);
-          if (!session.data.personalInfo) session.data.personalInfo = {};
           if (!session.data.personalInfo.phone) {
             session.data.personalInfo.phone = phoneMatch[0].trim();
             this.logger.log(`📱 SAVED phone directly: ${phoneMatch[0]}`);
@@ -119,11 +156,12 @@ export class ConversationService {
       }
 
       // Save directly extracted data immediately
-      if (emailMatch || phoneMatch) {
+      const hasNewData = emailMatch || phoneMatch || session.data.personalInfo.firstName;
+      if (hasNewData) {
         await this.userService.updateSession(session.id, {
           data: session.data,
         });
-        this.logger.log(`💾 DIRECT EXTRACTION saved to DB: email=${session.data.personalInfo?.email}, phone=${session.data.personalInfo?.phone}`);
+        this.logger.log(`💾 DIRECT EXTRACTION saved to DB: firstName=${session.data.personalInfo?.firstName}, email=${session.data.personalInfo?.email}, phone=${session.data.personalInfo?.phone}`);
       }
 
       // Use AI to handle the conversation intelligently
@@ -152,6 +190,38 @@ export class ConversationService {
         // Verify template was saved
         if (session.data.selectedTemplate) {
           this.logger.log(`✅ CONFIRMED - Template saved in session: "${session.data.selectedTemplate}"`);
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // FALLBACK EXTRACTION: If we still don't have firstName at personal_info step,
+      // use dedicated extraction method as last resort
+      // ═══════════════════════════════════════════════════════════════════════
+      if (session.currentStep === ConversationStep.PERSONAL_INFO && !session.data.personalInfo?.firstName) {
+        this.logger.log(`⚠️ firstName still missing after AI response, using dedicated extraction...`);
+        try {
+          const extractedInfo = await this.openaiService.extractStructuredInfo(message, 'personal_info');
+          this.logger.log(`📦 FALLBACK EXTRACTION result: ${JSON.stringify(extractedInfo)}`);
+
+          if (extractedInfo.firstName) {
+            session.data.personalInfo = session.data.personalInfo || {};
+            session.data.personalInfo.firstName = extractedInfo.firstName;
+            if (extractedInfo.lastName) {
+              session.data.personalInfo.lastName = extractedInfo.lastName;
+            }
+            this.logger.log(`✅ FALLBACK saved firstName: ${extractedInfo.firstName}`);
+          }
+          // Also get other fields if missing
+          if (!session.data.personalInfo?.email && extractedInfo.email) {
+            session.data.personalInfo = session.data.personalInfo || {};
+            session.data.personalInfo.email = extractedInfo.email;
+          }
+          if (!session.data.personalInfo?.phone && extractedInfo.phone) {
+            session.data.personalInfo = session.data.personalInfo || {};
+            session.data.personalInfo.phone = extractedInfo.phone;
+          }
+        } catch (extractError) {
+          this.logger.error(`Fallback extraction failed: ${extractError.message}`);
         }
       }
 
