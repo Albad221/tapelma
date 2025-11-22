@@ -82,6 +82,48 @@ export class ConversationService {
       const conversationHistory = await this.getConversationHistory(user.id);
       this.logger.log(`📜 CONVERSATION HISTORY (${conversationHistory.length} messages): ${JSON.stringify(conversationHistory.slice(-5), null, 2)}`); // Last 5 messages
 
+      // ═══════════════════════════════════════════════════════════════════════
+      // DIRECT EXTRACTION: Extract email and phone with regex BEFORE OpenAI
+      // This ensures we don't miss obvious data even if OpenAI fails
+      // ═══════════════════════════════════════════════════════════════════════
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
+      const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{2,4}[-.\s]?\d{2,4}[-.\s]?\d{0,4}/g;
+
+      const emailMatch = message.match(emailRegex);
+      const phoneMatch = message.match(phoneRegex);
+
+      // Pre-extract email if found in message
+      if (emailMatch && emailMatch[0]) {
+        const extractedEmail = emailMatch[0].trim();
+        this.logger.log(`📧 DIRECT EXTRACTION: Found email in message: ${extractedEmail}`);
+        if (!session.data.personalInfo) session.data.personalInfo = {};
+        if (!session.data.personalInfo.email) {
+          session.data.personalInfo.email = extractedEmail;
+          this.logger.log(`📧 SAVED email directly: ${extractedEmail}`);
+        }
+      }
+
+      // Pre-extract phone if found and looks like a phone number (6+ digits)
+      if (phoneMatch && phoneMatch[0]) {
+        const digits = phoneMatch[0].replace(/\D/g, '');
+        if (digits.length >= 6 && digits.length <= 15) {
+          this.logger.log(`📱 DIRECT EXTRACTION: Found phone in message: ${phoneMatch[0]}`);
+          if (!session.data.personalInfo) session.data.personalInfo = {};
+          if (!session.data.personalInfo.phone) {
+            session.data.personalInfo.phone = phoneMatch[0].trim();
+            this.logger.log(`📱 SAVED phone directly: ${phoneMatch[0]}`);
+          }
+        }
+      }
+
+      // Save directly extracted data immediately
+      if (emailMatch || phoneMatch) {
+        await this.userService.updateSession(session.id, {
+          data: session.data,
+        });
+        this.logger.log(`💾 DIRECT EXTRACTION saved to DB: email=${session.data.personalInfo?.email}, phone=${session.data.personalInfo?.phone}`);
+      }
+
       // Use AI to handle the conversation intelligently
       this.logger.log(`🤖 Calling OpenAI with step: ${session.currentStep}, language: ${session.language}`);
       const aiResponse = await this.openaiService.handleConversation(
