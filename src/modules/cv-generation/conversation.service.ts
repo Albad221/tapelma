@@ -176,10 +176,19 @@ export class ConversationService {
         nextStep = ConversationStep.WORK_EXPERIENCE;
       }
 
-      // AUTO-ADVANCE SAFEGUARD: If we have professionalSummary and user said "oui/yes" at PROFESSIONAL_SUMMARY step
-      // Ensure we advance to CV_PICTURE - OpenAI sometimes doesn't return the correct nextStep
+      // AUTO-ADVANCE SAFEGUARD: Handle confirmations at various steps
       const lowerMsg = message?.toLowerCase().trim() || '';
       const isConfirmation = ['oui', 'yes', 'ok', 'parfait', 'génial', 'super', 'd\'accord', 'daccord', 'c\'est bon', 'cest bon'].some(c => lowerMsg.includes(c));
+
+      // At LANGUAGES_KNOWN: If user confirms, advance to PROFESSIONAL_SUMMARY
+      if (session.currentStep === ConversationStep.LANGUAGES_KNOWN &&
+          session.data?.languages && session.data.languages.length > 0 &&
+          isConfirmation) {
+        this.logger.log(`✅ AUTO-ADVANCE: User confirmed languages with "${message}", advancing to professional_summary`);
+        nextStep = ConversationStep.PROFESSIONAL_SUMMARY;
+      }
+
+      // At PROFESSIONAL_SUMMARY: If we have summary and user confirms, advance to CV_PICTURE
       if (session.currentStep === ConversationStep.PROFESSIONAL_SUMMARY &&
           session.data?.professionalSummary &&
           isConfirmation) {
@@ -196,6 +205,43 @@ export class ConversationService {
            aiResponse.response.toLowerCase().includes('image'))) {
         this.logger.log(`✅ AUTO-ADVANCE: Response mentions photo, ensuring nextStep is cv_picture`);
         nextStep = ConversationStep.CV_PICTURE;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // NO BACKWARDS SAFEGUARD: OpenAI can NEVER go backwards in the flow
+      // This is CRITICAL - once we've passed a step, we can't return to it
+      // ═══════════════════════════════════════════════════════════════════════
+      const stepOrder = [
+        ConversationStep.GREETING,
+        ConversationStep.LANGUAGE_SELECTION,
+        ConversationStep.PERSONAL_INFO,
+        ConversationStep.WORK_EXPERIENCE,
+        ConversationStep.EDUCATION,
+        ConversationStep.SKILLS,
+        ConversationStep.LANGUAGES_KNOWN,
+        ConversationStep.PROFESSIONAL_SUMMARY,
+        ConversationStep.CV_PICTURE,
+        ConversationStep.TEMPLATE_SELECTION,
+        ConversationStep.REVIEW,
+        ConversationStep.GENERATION,
+        ConversationStep.COMPLETED,
+      ];
+
+      const currentStepIndex = stepOrder.indexOf(session.currentStep);
+      const nextStepIndex = stepOrder.indexOf(nextStep);
+
+      // If OpenAI suggests going backwards, keep the current step instead
+      if (nextStepIndex >= 0 && currentStepIndex >= 0 && nextStepIndex < currentStepIndex) {
+        this.logger.warn(`🚫 NO BACKWARDS: OpenAI tried to go from ${session.currentStep} back to ${nextStep}. Keeping current step.`);
+        // If user said "oui/ok", advance to the NEXT step instead of going backwards
+        if (isConfirmation) {
+          // Find the next valid step (current + 1)
+          const advanceToIndex = Math.min(currentStepIndex + 1, stepOrder.length - 1);
+          nextStep = stepOrder[advanceToIndex];
+          this.logger.log(`✅ User confirmed, advancing to: ${nextStep}`);
+        } else {
+          nextStep = session.currentStep;
+        }
       }
 
       // ═══════════════════════════════════════════════════════════════════════
