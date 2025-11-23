@@ -99,9 +99,9 @@ async function loadDashboard() {
         // Update stats
         document.getElementById('totalDocTypes').textContent = documentTypes.length;
 
-        // Count templates and fields
+        // Count templates, field groups, and fields
         let templateCount = 0;
-        let fieldCount = 0;
+        let fieldGroupCount = 0;
         let activeTemplateCount = 0;
 
         for (const dt of documentTypes) {
@@ -109,14 +109,12 @@ async function loadDashboard() {
             if (fullDt) {
                 templateCount += (fullDt.templates || []).length;
                 activeTemplateCount += (fullDt.templates || []).filter(t => t.isActive).length;
-                (fullDt.fieldGroups || []).forEach(fg => {
-                    fieldCount += (fg.fields || []).length;
-                });
+                fieldGroupCount += (fullDt.fieldGroups || []).length;
             }
         }
 
         document.getElementById('totalTemplates').textContent = templateCount;
-        document.getElementById('totalFields').textContent = fieldCount;
+        document.getElementById('totalFields').textContent = fieldGroupCount;
         document.getElementById('activeTemplates').textContent = activeTemplateCount;
 
         // Render document types list
