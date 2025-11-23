@@ -510,10 +510,71 @@ RESPONSE FORMAT (JSON):
 ═══════════════════════════════════════════════════════════════
 {
   "response": "Your message to user in ${language === 'fr' ? 'French' : language === 'es' ? 'Spanish' : 'English'}",
-  "extractedData": { ... any new data extracted ... },
+  "extractedData": {
+    // ONLY include fields that user just provided in their message
+    // DO NOT copy data from CURRENT CV DATA - that's already saved!
+
+    "personalInfo": {
+      "firstName": "User's first name (ONLY if user just provided it)",
+      "lastName": "User's last name",
+      "email": "email@example.com",
+      "phone": "+221XXXXXXX",
+      "city": "City name",
+      "country": "Country name",
+      "jobTitle": "Professional title like 'Software Engineer'"
+    },
+
+    // SKILLS - technical and soft skills ONLY (NOT languages!)
+    "skills": [
+      {"name": "JavaScript", "category": "technical"},
+      {"name": "Project Management", "category": "soft"}
+    ],
+
+    // LANGUAGES - spoken languages ONLY (French, English, Spanish, Wolof, etc.)
+    // DO NOT put skills here! Skills go in "skills" array above
+    "languages": [
+      {"name": "Français", "proficiency": "native"},
+      {"name": "English", "proficiency": "professional"}
+    ],
+
+    // WORK EXPERIENCE
+    "workExperience": {
+      "companyName": "Company name",
+      "position": "Job title",
+      "startDate": "2020",
+      "endDate": "2023 or Present",
+      "description": "Job responsibilities"
+    },
+
+    // EDUCATION
+    "education": {
+      "institution": "School/University name (NOT the degree!)",
+      "degree": "Bachelor, Master, etc.",
+      "fieldOfStudy": "Computer Science, etc.",
+      "startDate": "2016",
+      "endDate": "2020"
+    },
+
+    "professionalSummary": "2-3 sentence summary",
+    "selectedTemplate": "modern, classic, creative, etc."
+  },
   "nextStep": "one of: personal_info, work_experience, education, skills, languages_known, professional_summary, cv_picture, template_selection, completed",
   "shouldContinue": true (or false ONLY at template_selection when user selects a template)
-}`;
+}
+
+🔴 CRITICAL DATA SEPARATION RULES:
+- SKILLS = things you can DO (programming, management, design, social media marketing)
+- LANGUAGES = languages you SPEAK (French, English, Spanish, Wolof, Arabic)
+- NEVER put skills in the languages array!
+- NEVER put languages in the skills array!
+- "Social media" is a SKILL, not a language!
+- "Chef de projet" is a SKILL, not a language!
+
+🔴 NAME EXTRACTION:
+- "Je veux un CV" means "I want a CV" - this is NOT a name!
+- Only extract firstName when user actually states their name
+- Examples of names: "Je m'appelle Amadou", "Mon nom est Fatou", "Aliou Diallo"
+- Examples that are NOT names: "Je veux", "Bonjour", "Salut", "OK"`;
 
       // Limit conversation history to last 5 messages to reduce token usage
       const limitedHistory = conversationHistory.slice(-5);
