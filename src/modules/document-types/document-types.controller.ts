@@ -28,7 +28,7 @@ import { CV_TEMPLATES } from '../pdf/templates/template-registry';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-@Controller('api/admin/document-types')
+@Controller('admin/document-types')
 export class DocumentTypesController {
   private readonly logger = new Logger(DocumentTypesController.name);
 
