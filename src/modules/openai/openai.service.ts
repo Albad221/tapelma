@@ -393,6 +393,13 @@ When user provides DETAILS (company names, dates, job descriptions), ALWAYS extr
 LANGUAGE: ${language === 'fr' ? 'French' : language === 'es' ? 'Spanish' : 'English'} (ALWAYS respond in this language)
 CURRENT STEP: ${currentStep}
 
+🔴 FORMATTING RULES FOR YOUR RESPONSES:
+- DO NOT use markdown formatting (no **, no ##, no *, no #)
+- DO NOT use bold, italics, or headers
+- Write plain text only - this is for WhatsApp which doesn't render markdown well
+- Use simple bullet points with - if needed
+- Keep responses short and conversational
+
 ══════════════════════════════════════════════════════════════
 🔴🔴🔴 ALREADY SAVED DATA - NEVER ASK FOR THIS AGAIN! 🔴🔴🔴
 ══════════════════════════════════════════════════════════════
