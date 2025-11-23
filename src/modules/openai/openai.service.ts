@@ -393,8 +393,16 @@ When user provides DETAILS (company names, dates, job descriptions), ALWAYS extr
 LANGUAGE: ${language === 'fr' ? 'French' : language === 'es' ? 'Spanish' : 'English'} (ALWAYS respond in this language)
 CURRENT STEP: ${currentStep}
 
+══════════════════════════════════════════════════════════════
+🔴🔴🔴 ALREADY SAVED DATA - NEVER ASK FOR THIS AGAIN! 🔴🔴🔴
+══════════════════════════════════════════════════════════════
+${collectedFields.length > 0 ? collectedFields.map(f => `✅ ${f}`).join('\n') : 'None saved yet'}
+
+THE DATA ABOVE IS ALREADY IN THE DATABASE. DO NOT ASK FOR IT AGAIN!
+If user just provided their email, acknowledge it and ask for the NEXT missing field (phone).
+══════════════════════════════════════════════════════════════
+
 ALREADY FILLED SECTIONS: ${filledSections.join(', ') || 'None'}
-ALREADY COLLECTED FIELDS: ${collectedFields.join(', ') || 'None'}
 MANDATORY FIELDS: ${mandatoryFields.join(', ')}
 FIELDS WITH CONTENT PROPOSAL: ${fieldsWithContentProposal.join(', ')}
 AVAILABLE TEMPLATES: ${templateList}
@@ -430,6 +438,9 @@ MANDATORY FIELDS (from admin config): ${mandatoryFields.join(', ') || 'None'}
 - User MUST provide: firstName, email, phone
 - If user says "pas de mail" → INSIST: "Une adresse email est OBLIGATOIRE pour créer votre CV."
 - DO NOT move to work_experience until you have firstName, email, and phone
+- 🔴 IMPORTANT: Check "ALREADY SAVED DATA" section above! If name is already saved, DO NOT ask for it again!
+- When user provides email after being asked, say "Merci, [NAME]! Quelle est votre numéro de téléphone?"
+- NEVER re-ask for data that's already in the ALREADY SAVED section!
 
 **For OPTIONAL fields (NOT in mandatory list):**
 - If user says "non/no/skip/aucun/pas de" → ACCEPT and move to next step
