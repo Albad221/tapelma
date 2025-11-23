@@ -10,12 +10,20 @@ import { StorageModule } from './modules/storage/storage.module';
 import { CVGenerationModule } from './modules/cv-generation/cv-generation.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { GeminiModule } from './modules/gemini/gemini.module';
+import { DocumentTypesModule } from './modules/document-types/document-types.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      serveRoot: '/',
+      exclude: ['/api*', '/webhook*'],
     }),
     UserModule,
     WhatsAppModule,
@@ -25,6 +33,7 @@ import { GeminiModule } from './modules/gemini/gemini.module';
     StorageModule,
     CVGenerationModule,
     AdminModule,
+    DocumentTypesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

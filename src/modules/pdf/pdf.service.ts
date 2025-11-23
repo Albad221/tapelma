@@ -10,13 +10,23 @@ import {
   recommendTemplates,
   TemplateMetadata
 } from './templates/template-registry';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class PDFService {
   private readonly logger = new Logger(PDFService.name);
   private readonly templatesPath = path.join(__dirname, 'templates');
+  private supabase: SupabaseClient;
 
   constructor() {
+    // Initialize Supabase client for database templates
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+      this.supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY,
+      );
+    }
+
     // Register Handlebars helpers
     Handlebars.registerHelper('substring', (str: string, start: number, end: number) => {
       if (!str) return '';
@@ -170,6 +180,130 @@ export class PDFService {
   // Get recommended templates based on profession
   getRecommendedTemplates(profession?: string): TemplateMetadata[] {
     return recommendTemplates(profession);
+  }
+
+  // Generate PDF from database template
+  async generateFromDatabaseTemplate(
+    templateId: string,
+    data: Record<string, any>,
+  ): Promise<Buffer> {
+    try {
+      if (!this.supabase) {
+        throw new Error('Supabase not configured');
+      }
+
+      // Fetch template from database
+      const { data: template, error } = await this.supabase
+        .from('document_templates')
+        .select('*, document_types(*)')
+        .eq('id', templateId)
+        .single();
+
+      if (error || !template) {
+        throw new Error(`Template not found: ${templateId}`);
+      }
+
+      this.logger.log(`Generating PDF from database template: ${template.name}`);
+
+      // Prepare template HTML with CSS
+      let templateHtml = template.template_html;
+      if (template.template_css) {
+        templateHtml = templateHtml.replace('</head>', `<style>${template.template_css}</style></head>`);
+      }
+
+      // Replace color variables
+      templateHtml = templateHtml
+        .replace(/\{\{primaryColor\}\}/g, template.primary_color || '#667eea')
+        .replace(/\{\{secondaryColor\}\}/g, template.secondary_color || '#764ba2')
+        .replace(/\{\{accentColor\}\}/g, template.accent_color || '#4299e1');
+
+      // Compile template with Handlebars
+      const compiledTemplate = Handlebars.compile(templateHtml);
+
+      // Prepare data for CV-type documents (maintain backward compatibility)
+      const templateData = data.personalInfo ? this.prepareTemplateData(data as CVData) : data;
+
+      // Generate HTML
+      const html = compiledTemplate(templateData);
+
+      // Get document type settings for page size
+      const docType = template.document_types;
+      const pageConfig: any = {
+        format: docType?.page_size === 'Custom' ? undefined : (docType?.page_size || 'A4'),
+        printBackground: true,
+        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
+        landscape: docType?.orientation === 'landscape',
+      };
+
+      // Handle custom page sizes
+      if (docType?.page_size === 'Custom' && docType?.page_width_mm && docType?.page_height_mm) {
+        pageConfig.width = `${docType.page_width_mm}mm`;
+        pageConfig.height = `${docType.page_height_mm}mm`;
+      }
+
+      // Generate PDF using Puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        args: this.getPuppeteerArgs(),
+      });
+
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf(pageConfig);
+      await browser.close();
+
+      this.logger.log('PDF generated successfully from database template');
+      return Buffer.from(pdfBuffer);
+    } catch (error) {
+      this.logger.error(`Error generating PDF from database template: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Get database template by slug or ID
+  async getDatabaseTemplate(slugOrId: string): Promise<any> {
+    if (!this.supabase) return null;
+
+    const { data, error } = await this.supabase
+      .from('document_templates')
+      .select('*')
+      .or(`slug.eq.${slugOrId},id.eq.${slugOrId}`)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  // Puppeteer launch arguments (extracted for reuse)
+  private getPuppeteerArgs(): string[] {
+    return [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--disable-extensions',
+      '--single-process',
+      '--no-zygote',
+      '--disable-breakpad',
+      '--disable-crash-reporter',
+      '--crash-dumps-dir=/tmp',
+      '--disable-features=TranslateUI,Crashpad',
+      '--disable-ipc-flooding-protection',
+      '--disable-renderer-backgrounding',
+      '--enable-features=NetworkService,NetworkServiceInProcess',
+      '--force-color-profile=srgb',
+      '--hide-scrollbars',
+      '--mute-audio',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--metrics-recording-only',
+      '--no-first-run',
+      '--safebrowsing-disable-auto-update',
+    ];
   }
 
   // Generate preview PDF with sample data

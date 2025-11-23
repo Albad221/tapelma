@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SamaCV Admin - Document Management Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin-dashboard.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="ri-file-text-line"></i>
+                    <span>SamaCV</span>
+                </div>
+                <button class="sidebar-toggle" onclick="toggleSidebar()">
+                    <i class="ri-menu-fold-line"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-section-title">Overview</span>
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <i class="ri-dashboard-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">Document Management</span>
+                    <a href="#" class="nav-item" data-page="document-types">
+                        <i class="ri-file-list-3-line"></i>
+                        <span>Document Types</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="templates">
+                        <i class="ri-layout-4-line"></i>
+                        <span>Templates</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="fields">
+                        <i class="ri-input-field"></i>
+                        <span>Form Fields</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">Preview & Testing</span>
+                    <a href="#" class="nav-item" data-page="simulator">
+                        <i class="ri-play-circle-line"></i>
+                        <span>Template Simulator</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="bot-preview">
+                        <i class="ri-whatsapp-line"></i>
+                        <span>Bot Preview</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">System</span>
+                    <a href="#" class="nav-item" data-page="settings">
+                        <i class="ri-settings-3-line"></i>
+                        <span>Settings</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name">Admin</span>
+                        <span class="user-role">Super Admin</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                        <i class="ri-menu-line"></i>
+                    </button>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <i class="ri-search-line"></i>
+                        <input type="text" placeholder="Search...">
+                    </div>
+                    <button class="icon-btn notification-btn">
+                        <i class="ri-notification-3-line"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="contentArea">
+                <!-- Dashboard Page -->
+                <div class="page active" id="page-dashboard">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <i class="ri-file-list-3-line"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="totalDocTypes">0</span>
+                                <span class="stat-label">Document Types</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <i class="ri-layout-4-line"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="totalTemplates">0</span>
+                                <span class="stat-label">Templates</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <i class="ri-input-field"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="totalFields">0</span>
+                                <span class="stat-label">Form Fields</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <i class="ri-file-check-line"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="activeTemplates">0</span>
+                                <span class="stat-label">Active Templates</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Document Types</h3>
+                                <button class="btn btn-primary btn-sm" onclick="showPage('document-types')">
+                                    <i class="ri-add-line"></i> Add New
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="doc-types-list" id="dashboardDocTypes"></div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Recent Templates</h3>
+                                <button class="btn btn-primary btn-sm" onclick="showPage('templates')">
+                                    View All
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="templates-list" id="dashboardTemplates"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Quick Actions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <button class="quick-action-btn" onclick="showCreateDocTypeModal()">
+                                    <i class="ri-file-add-line"></i>
+                                    <span>New Document Type</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="showPage('templates'); setTimeout(showCreateTemplateModal, 100)">
+                                    <i class="ri-layout-2-line"></i>
+                                    <span>New Template</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="showPage('simulator')">
+                                    <i class="ri-play-circle-line"></i>
+                                    <span>Test Templates</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="migrateExistingTemplates()">
+                                    <i class="ri-database-2-line"></i>
+                                    <span>Migrate Templates</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Types Page -->
+                <div class="page" id="page-document-types">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Document Types</h2>
+                            <p>Manage all document types that can be generated (CV, Business Cards, Flyers, etc.)</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showCreateDocTypeModal()">
+                            <i class="ri-add-line"></i> New Document Type
+                        </button>
+                    </div>
+
+                    <div class="doc-types-grid" id="docTypesGrid"></div>
+                </div>
+
+                <!-- Templates Page -->
+                <div class="page" id="page-templates">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Templates</h2>
+                            <p>Design and manage templates for each document type</p>
+                        </div>
+                        <div class="page-header-actions">
+                            <select id="templateDocTypeFilter" class="form-select" onchange="loadTemplates()">
+                                <option value="">All Document Types</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="showCreateTemplateModal()">
+                                <i class="ri-add-line"></i> New Template
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="templates-grid" id="templatesGrid"></div>
+                </div>
+
+                <!-- Fields Page -->
+                <div class="page" id="page-fields">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Form Fields</h2>
+                            <p>Configure field groups and individual form fields for each document type</p>
+                        </div>
+                        <div class="page-header-actions">
+                            <select id="fieldsDocTypeFilter" class="form-select" onchange="loadFieldGroups()">
+                                <option value="">Select Document Type</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="showCreateFieldGroupModal()" id="addFieldGroupBtn" disabled>
+                                <i class="ri-add-line"></i> New Field Group
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="fields-container" id="fieldsContainer">
+                        <div class="empty-state">
+                            <i class="ri-folder-open-line"></i>
+                            <p>Select a document type to manage its field groups and form fields</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulator Page -->
+                <div class="page" id="page-simulator">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Template Simulator</h2>
+                            <p>Preview how templates render with sample data</p>
+                        </div>
+                    </div>
+
+                    <div class="simulator-container">
+                        <div class="simulator-sidebar">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Configuration</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Document Type</label>
+                                        <select id="simDocType" class="form-select" onchange="loadSimulatorTemplates()">
+                                            <option value="">Select...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Template</label>
+                                        <select id="simTemplate" class="form-select">
+                                            <option value="">Select...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Sample Data</label>
+                                        <select id="simSampleData" class="form-select">
+                                            <option value="default">Default Sample</option>
+                                            <option value="minimal">Minimal Data</option>
+                                            <option value="full">Full Data</option>
+                                            <option value="custom">Custom JSON</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="customDataGroup" style="display: none;">
+                                        <label>Custom JSON Data</label>
+                                        <textarea id="customJsonData" class="form-textarea" rows="10" placeholder='{"personalInfo": {...}}'></textarea>
+                                    </div>
+                                    <button class="btn btn-primary btn-block" onclick="runSimulation()">
+                                        <i class="ri-play-line"></i> Run Preview
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="simulator-preview">
+                            <div class="preview-header">
+                                <span>Preview</span>
+                                <div class="preview-actions">
+                                    <button class="icon-btn" onclick="downloadPreview()" title="Download PDF">
+                                        <i class="ri-download-line"></i>
+                                    </button>
+                                    <button class="icon-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                                        <i class="ri-fullscreen-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="preview-content" id="previewContent">
+                                <div class="empty-state">
+                                    <i class="ri-image-line"></i>
+                                    <p>Select a template and click "Run Preview" to see the result</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Preview Page -->
+                <div class="page" id="page-bot-preview">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Bot Conversation Preview</h2>
+                            <p>Preview how the WhatsApp bot will guide users through form collection</p>
+                        </div>
+                    </div>
+
+                    <div class="bot-preview-container">
+                        <div class="phone-mockup">
+                            <div class="phone-header">
+                                <div class="phone-status-bar">
+                                    <span>9:41</span>
+                                    <div class="phone-icons">
+                                        <i class="ri-signal-wifi-fill"></i>
+                                        <i class="ri-battery-fill"></i>
+                                    </div>
+                                </div>
+                                <div class="chat-header">
+                                    <div class="chat-avatar">S</div>
+                                    <div class="chat-info">
+                                        <span class="chat-name">SamaCV Bot</span>
+                                        <span class="chat-status">online</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="phone-content" id="botChatContent">
+                                <div class="chat-message bot">
+                                    <p>Welcome! What type of document would you like to create?</p>
+                                </div>
+                            </div>
+                            <div class="phone-input">
+                                <input type="text" id="botInput" placeholder="Type a message..." onkeypress="handleBotInput(event)">
+                                <button onclick="sendBotMessage()">
+                                    <i class="ri-send-plane-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bot-config">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Test Configuration</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label>Document Type</label>
+                                        <select id="botDocType" class="form-select" onchange="startBotSimulation()">
+                                            <option value="">Select to start...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Language</label>
+                                        <select id="botLanguage" class="form-select">
+                                            <option value="en">English</option>
+                                            <option value="fr">French</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-secondary btn-block" onclick="resetBotSimulation()">
+                                        <i class="ri-refresh-line"></i> Reset Conversation
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Collected Data</h3>
+                                </div>
+                                <div class="card-body">
+                                    <pre id="collectedData" class="code-block">{}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div class="page" id="page-settings">
+                    <div class="page-header">
+                        <div class="page-header-content">
+                            <h2>Settings</h2>
+                            <p>System configuration and utilities</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Database Migration</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Migrate existing hardcoded CV templates to the database</p>
+                                <button class="btn btn-primary" onclick="migrateExistingTemplates()">
+                                    <i class="ri-database-2-line"></i> Migrate Templates
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Seed Sample Document Types</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Add sample document types (Business Card, Flyer)</p>
+                                <button class="btn btn-primary" onclick="seedSampleDocTypes()">
+                                    <i class="ri-seedling-line"></i> Seed Samples
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Export Configuration</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Export all document types, fields, and templates as JSON</p>
+                                <button class="btn btn-secondary" onclick="exportConfiguration()">
+                                    <i class="ri-download-line"></i> Export JSON
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Import Configuration</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Import document types, fields, and templates from JSON</p>
+                                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importConfiguration(event)">
+                                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">
+                                    <i class="ri-upload-line"></i> Import JSON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+
+    <!-- Create/Edit Document Type Modal -->
+    <div class="modal" id="docTypeModal">
+        <div class="modal-header">
+            <h3 id="docTypeModalTitle">Create Document Type</h3>
+            <button class="modal-close" onclick="closeModal('docTypeModal')">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="docTypeForm">
+                <input type="hidden" id="docTypeId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Slug (unique identifier)*</label>
+                        <input type="text" id="docTypeSlug" class="form-input" placeholder="e.g., business-card" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Icon</label>
+                        <input type="text" id="docTypeIcon" class="form-input" placeholder="e.g., ri-profile-line">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name (English)*</label>
+                        <input type="text" id="docTypeName" class="form-input" placeholder="Business Card" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Name (French)</label>
+                        <input type="text" id="docTypeNameFr" class="form-input" placeholder="Carte de Visite">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description (English)</label>
+                    <textarea id="docTypeDescription" class="form-textarea" rows="2" placeholder="Professional business cards"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Welcome Message (what bot says when user selects this)</label>
+                    <textarea id="docTypeWelcome" class="form-textarea" rows="2" placeholder="Great! Let's create your business card..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Output Format</label>
+                        <select id="docTypeFormat" class="form-select">
+                            <option value="pdf">PDF</option>
+                            <option value="png">PNG Image</option>
+                            <option value="jpg">JPG Image</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Page Size</label>
+                        <select id="docTypePageSize" class="form-select" onchange="toggleCustomSize()">
+                            <option value="A4">A4</option>
+                            <option value="Letter">Letter</option>
+                            <option value="A5">A5</option>
+                            <option value="Custom">Custom</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" id="customSizeRow" style="display: none;">
+                    <div class="form-group">
+                        <label>Width (mm)</label>
+                        <input type="number" id="docTypeWidth" class="form-input" placeholder="85">
+                    </div>
+                    <div class="form-group">
+                        <label>Height (mm)</label>
+                        <input type="number" id="docTypeHeight" class="form-input" placeholder="55">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Orientation</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="docTypeOrientation" value="portrait" checked>
+                            <span>Portrait</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="docTypeOrientation" value="landscape">
+                            <span>Landscape</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="docTypeActive" checked>
+                        <span>Active (available for users)</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('docTypeModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveDocType()">Save</button>
+        </div>
+    </div>
+
+    <!-- Create/Edit Template Modal -->
+    <div class="modal modal-lg" id="templateModal">
+        <div class="modal-header">
+            <h3 id="templateModalTitle">Create Template</h3>
+            <button class="modal-close" onclick="closeModal('templateModal')">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="template-editor">
+                <div class="template-editor-sidebar">
+                    <form id="templateForm">
+                        <input type="hidden" id="templateId">
+                        <div class="form-group">
+                            <label>Document Type*</label>
+                            <select id="templateDocType" class="form-select" required>
+                                <option value="">Select...</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Slug*</label>
+                                <input type="text" id="templateSlug" class="form-input" placeholder="modern" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="templateCategory" class="form-select">
+                                    <option value="modern">Modern</option>
+                                    <option value="traditional">Traditional</option>
+                                    <option value="creative">Creative</option>
+                                    <option value="executive">Executive</option>
+                                    <option value="minimal">Minimal</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Name (English)*</label>
+                                <input type="text" id="templateName" class="form-input" placeholder="Modern Professional" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Name (French)</label>
+                                <input type="text" id="templateNameFr" class="form-input" placeholder="Professionnel Moderne">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="templateDescription" class="form-textarea" rows="2"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Primary Color</label>
+                                <input type="color" id="templatePrimaryColor" class="form-color" value="#667eea">
+                            </div>
+                            <div class="form-group">
+                                <label>Secondary Color</label>
+                                <input type="color" id="templateSecondaryColor" class="form-color" value="#764ba2">
+                            </div>
+                            <div class="form-group">
+                                <label>Accent Color</label>
+                                <input type="color" id="templateAccentColor" class="form-color" value="#4299e1">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Best For (comma separated)</label>
+                            <input type="text" id="templateBestFor" class="form-input" placeholder="IT, Engineering, Business">
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="templateActive" checked>
+                                <span>Active</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="templateDefault">
+                                <span>Default Template</span>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="template-editor-main">
+                    <div class="editor-tabs">
+                        <button class="editor-tab active" onclick="switchEditorTab('html')">HTML Template</button>
+                        <button class="editor-tab" onclick="switchEditorTab('css')">CSS Styles</button>
+                        <button class="editor-tab" onclick="switchEditorTab('preview')">Live Preview</button>
+                    </div>
+                    <div class="editor-content">
+                        <div class="editor-pane active" id="htmlPane">
+                            <textarea id="templateHtml" class="code-editor" placeholder="<!-- Handlebars HTML Template -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>{{styles}}</style>
+</head>
+<body>
+    <h1>{{personalInfo.fullName}}</h1>
+    {{#each workExperiences}}
+        <div>{{this.position}} at {{this.companyName}}</div>
+    {{/each}}
+</body>
+</html>"></textarea>
+                        </div>
+                        <div class="editor-pane" id="cssPane">
+                            <textarea id="templateCss" class="code-editor" placeholder="/* Optional separate CSS */
+body {
+    font-family: 'Segoe UI', sans-serif;
+}"></textarea>
+                        </div>
+                        <div class="editor-pane" id="previewPane">
+                            <iframe id="templatePreviewFrame" class="preview-frame"></iframe>
+                        </div>
+                    </div>
+                    <div class="editor-toolbar">
+                        <button class="btn btn-sm btn-secondary" onclick="insertTemplateSnippet('personalInfo')">
+                            <i class="ri-user-line"></i> Personal Info
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="insertTemplateSnippet('workExperience')">
+                            <i class="ri-briefcase-line"></i> Work Exp
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="insertTemplateSnippet('education')">
+                            <i class="ri-graduation-cap-line"></i> Education
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="insertTemplateSnippet('skills')">
+                            <i class="ri-tools-line"></i> Skills
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="refreshTemplatePreview()">
+                            <i class="ri-refresh-line"></i> Refresh Preview
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('templateModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+        </div>
+    </div>
+
+    <!-- Create/Edit Field Group Modal -->
+    <div class="modal" id="fieldGroupModal">
+        <div class="modal-header">
+            <h3 id="fieldGroupModalTitle">Create Field Group</h3>
+            <button class="modal-close" onclick="closeModal('fieldGroupModal')">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="fieldGroupForm">
+                <input type="hidden" id="fieldGroupId">
+                <input type="hidden" id="fieldGroupDocTypeId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Slug*</label>
+                        <input type="text" id="fieldGroupSlug" class="form-input" placeholder="work_experience" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sort Order</label>
+                        <input type="number" id="fieldGroupSortOrder" class="form-input" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name (English)*</label>
+                        <input type="text" id="fieldGroupName" class="form-input" placeholder="Work Experience" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Name (French)</label>
+                        <input type="text" id="fieldGroupNameFr" class="form-input" placeholder="Expérience Professionnelle">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Bot Prompt Message (what bot asks for this group)</label>
+                    <textarea id="fieldGroupPrompt" class="form-textarea" rows="2" placeholder="Tell me about your work experience..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fieldGroupRepeatable">
+                        <span>Repeatable (multiple entries allowed, e.g., work experiences)</span>
+                    </label>
+                </div>
+                <div class="form-row" id="repeatableOptions" style="display: none;">
+                    <div class="form-group">
+                        <label>Min Entries</label>
+                        <input type="number" id="fieldGroupMinEntries" class="form-input" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Entries</label>
+                        <input type="number" id="fieldGroupMaxEntries" class="form-input" value="10">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fieldGroupMandatory">
+                        <span>Mandatory</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fieldGroupAiEnhanced">
+                        <span>AI Enhanced (optimize content with AI)</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('fieldGroupModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveFieldGroup()">Save</button>
+        </div>
+    </div>
+
+    <!-- Create/Edit Form Field Modal -->
+    <div class="modal" id="formFieldModal">
+        <div class="modal-header">
+            <h3 id="formFieldModalTitle">Create Form Field</h3>
+            <button class="modal-close" onclick="closeModal('formFieldModal')">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="formFieldForm">
+                <input type="hidden" id="formFieldId">
+                <input type="hidden" id="formFieldGroupId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Slug*</label>
+                        <input type="text" id="formFieldSlug" class="form-input" placeholder="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Field Type*</label>
+                        <select id="formFieldType" class="form-select" onchange="toggleFieldOptions()">
+                            <option value="text">Text</option>
+                            <option value="textarea">Textarea</option>
+                            <option value="email">Email</option>
+                            <option value="phone">Phone</option>
+                            <option value="url">URL</option>
+                            <option value="date">Date</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Boolean (Yes/No)</option>
+                            <option value="select">Select (Dropdown)</option>
+                            <option value="multiselect">Multi-Select</option>
+                            <option value="image">Image Upload</option>
+                            <option value="file">File Upload</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name (English)*</label>
+                        <input type="text" id="formFieldName" class="form-input" placeholder="Email Address" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Name (French)</label>
+                        <input type="text" id="formFieldNameFr" class="form-input" placeholder="Adresse Email">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Placeholder</label>
+                        <input type="text" id="formFieldPlaceholder" class="form-input" placeholder="john@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Sort Order</label>
+                        <input type="number" id="formFieldSortOrder" class="form-input" value="0">
+                    </div>
+                </div>
+                <div class="form-group" id="fieldOptionsGroup" style="display: none;">
+                    <label>Options (JSON array)</label>
+                    <textarea id="formFieldOptions" class="form-textarea" rows="3" placeholder='[{"value": "basic", "label": "Basic"}, {"value": "fluent", "label": "Fluent"}]'></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Validation Regex (optional)</label>
+                        <input type="text" id="formFieldValidation" class="form-input" placeholder="^[a-zA-Z]+$">
+                    </div>
+                    <div class="form-group">
+                        <label>Default Value</label>
+                        <input type="text" id="formFieldDefault" class="form-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="formFieldMandatory">
+                        <span>Mandatory</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="formFieldAiEnhanced">
+                        <span>AI Enhanced</span>
+                    </label>
+                </div>
+                <div class="form-group" id="aiPromptGroup" style="display: none;">
+                    <label>AI Enhancement Prompt</label>
+                    <textarea id="formFieldAiPrompt" class="form-textarea" rows="2" placeholder="Optimize this job description to highlight achievements..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('formFieldModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveFormField()">Save</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/admin-dashboard.js"></script>
+</body>
+</html>
