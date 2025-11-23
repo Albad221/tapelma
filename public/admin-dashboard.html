@@ -644,6 +644,36 @@
                     </form>
                 </div>
                 <div class="template-editor-main">
+                    <!-- Image to Template Converter -->
+                    <div class="image-converter-section" id="imageConverterSection">
+                        <div class="image-converter-header">
+                            <i class="ri-magic-line"></i>
+                            <span>Generate from Image</span>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleImageConverter()">
+                                <i class="ri-arrow-down-s-line" id="imageConverterToggle"></i>
+                            </button>
+                        </div>
+                        <div class="image-converter-content" id="imageConverterContent">
+                            <p class="text-muted mb-2">Upload a template design image and AI will convert it to HTML/CSS code</p>
+                            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('templateImageInput').click()">
+                                <input type="file" id="templateImageInput" accept="image/*" style="display: none;" onchange="handleTemplateImageUpload(event)">
+                                <div class="upload-placeholder" id="uploadPlaceholder">
+                                    <i class="ri-image-add-line"></i>
+                                    <span>Click to upload or drag & drop</span>
+                                    <span class="text-muted">PNG, JPG, WEBP (max 10MB)</span>
+                                </div>
+                                <img id="templateImagePreview" class="upload-preview" style="display: none;">
+                            </div>
+                            <button class="btn btn-primary btn-block mt-2" id="convertImageBtn" onclick="convertImageToTemplate()" disabled>
+                                <i class="ri-magic-line"></i> Convert to Template
+                            </button>
+                            <div class="conversion-progress" id="conversionProgress" style="display: none;">
+                                <div class="spinner"></div>
+                                <span>AI is analyzing your design...</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="editor-tabs">
                         <button class="editor-tab active" onclick="switchEditorTab('html')">HTML Template</button>
                         <button class="editor-tab" onclick="switchEditorTab('css')">CSS Styles</button>

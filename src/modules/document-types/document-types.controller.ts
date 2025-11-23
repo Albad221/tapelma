@@ -24,6 +24,7 @@ import type {
   UpdateTemplateDto,
 } from './interfaces/document-type.interface';
 import { PDFService } from '../pdf/pdf.service';
+import { OpenAIService } from '../openai/openai.service';
 import { CV_TEMPLATES } from '../pdf/templates/template-registry';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -35,6 +36,7 @@ export class DocumentTypesController {
   constructor(
     private readonly documentTypesService: DocumentTypesService,
     private readonly pdfService: PDFService,
+    private readonly openAIService: OpenAIService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -211,6 +213,33 @@ export class DocumentTypesController {
     } catch (error) {
       this.logger.error(`Preview generation failed: ${error.message}`);
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // IMAGE TO TEMPLATE CONVERSION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @Post('convert-image-to-template')
+  async convertImageToTemplate(@Body() body: { imageBase64: string }) {
+    this.logger.log('Converting image to template...');
+
+    if (!body.imageBase64) {
+      return {
+        success: false,
+        error: 'No image provided',
+      };
+    }
+
+    try {
+      const result = await this.openAIService.convertImageToTemplate(body.imageBase64);
+      return result;
+    } catch (error) {
+      this.logger.error(`Image conversion failed: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   }
 

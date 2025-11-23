@@ -590,6 +590,124 @@ RESPONSE FORMAT (JSON):
    * @param language - Language for the response
    * @returns Analysis result with suitability and feedback
    */
+  /**
+   * Convert an image of a template design into HTML/CSS code
+   * @param imageBase64 - Base64 encoded image data
+   * @returns Generated HTML template code
+   */
+  async convertImageToTemplate(
+    imageBase64: string,
+  ): Promise<{
+    success: boolean;
+    templateHtml: string;
+    templateCss: string;
+    description: string;
+    suggestedName: string;
+    suggestedCategory: string;
+    colors: {
+      primary: string;
+      secondary: string;
+      accent: string;
+    };
+  }> {
+    try {
+      this.logger.log('Converting image to template with OpenAI Vision...');
+
+      const messages: any[] = [
+        {
+          role: 'system',
+          content: `You are an expert frontend developer specializing in converting design images into pixel-perfect HTML/CSS templates.
+
+Your task is to analyze a template design image and generate complete, working HTML/CSS code that replicates the design.
+
+IMPORTANT GUIDELINES:
+1. Generate a COMPLETE, self-contained HTML document with embedded CSS
+2. Use Handlebars syntax for dynamic data:
+   - {{personalInfo.fullName}}, {{personalInfo.email}}, {{personalInfo.phone}}, {{personalInfo.location}}
+   - {{professionalSummary}}
+   - {{#each workExperiences}}...{{/each}} with {{this.position}}, {{this.companyName}}, {{this.duration}}, {{this.description}}
+   - {{#each education}}...{{/each}} with {{this.degreeField}}, {{this.institution}}, {{this.duration}}
+   - {{#each skills}}...{{/each}} with {{this.name}}
+   - {{#if hasWorkExperience}}, {{#if hasEducation}}, {{#if hasSkills}}, {{#if hasProfessionalSummary}}
+   - {{primaryColor}}, {{secondaryColor}} for theme colors
+3. Make the template responsive and print-friendly
+4. Use modern CSS (flexbox, grid, CSS variables)
+5. Match colors, fonts, and layout as closely as possible to the image
+6. Ensure the template works for A4 page size (210mm x 297mm)
+
+Return a JSON response with:
+{
+  "success": true,
+  "templateHtml": "Complete HTML document with embedded styles",
+  "templateCss": "Additional CSS if needed (can be empty)",
+  "description": "Brief description of the template style",
+  "suggestedName": "A name for this template",
+  "suggestedCategory": "modern|traditional|creative|executive|minimal",
+  "colors": {
+    "primary": "#hexcolor",
+    "secondary": "#hexcolor",
+    "accent": "#hexcolor"
+  }
+}`,
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Please analyze this template design image and convert it into a complete, working HTML/CSS template for a CV/Resume. Include all sections visible in the design and use Handlebars syntax for dynamic content.',
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`,
+              },
+            },
+          ],
+        },
+      ];
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+      });
+
+      const result = JSON.parse(completion.choices[0].message.content || '{}');
+      this.logger.log(`Template conversion result: ${result.suggestedName}`);
+
+      return {
+        success: result.success !== false,
+        templateHtml: result.templateHtml || '',
+        templateCss: result.templateCss || '',
+        description: result.description || 'Generated from image',
+        suggestedName: result.suggestedName || 'Custom Template',
+        suggestedCategory: result.suggestedCategory || 'modern',
+        colors: result.colors || {
+          primary: '#667eea',
+          secondary: '#764ba2',
+          accent: '#4299e1',
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error converting image to template: ${error.message}`);
+      return {
+        success: false,
+        templateHtml: '',
+        templateCss: '',
+        description: `Error: ${error.message}`,
+        suggestedName: '',
+        suggestedCategory: 'modern',
+        colors: {
+          primary: '#667eea',
+          secondary: '#764ba2',
+          accent: '#4299e1',
+        },
+      };
+    }
+  }
+
   async analyzeCVPicture(
     imageUrl: string,
     language: string = 'fr',

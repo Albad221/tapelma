@@ -425,6 +425,7 @@ function showCreateTemplateModal() {
     document.getElementById('templateActive').checked = true;
     document.getElementById('templateHtml').value = getDefaultTemplateHtml();
     document.getElementById('templateCss').value = '';
+    resetImageConverter();
     switchEditorTab('html');
     openModal('templateModal');
 }
@@ -1468,6 +1469,159 @@ function importConfiguration(event) {
         }
     };
     reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMAGE TO TEMPLATE CONVERTER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let uploadedImageBase64 = null;
+
+function toggleImageConverter() {
+    const content = document.getElementById('imageConverterContent');
+    const toggle = document.getElementById('imageConverterToggle');
+    content.classList.toggle('expanded');
+    toggle.classList.toggle('ri-arrow-down-s-line');
+    toggle.classList.toggle('ri-arrow-up-s-line');
+}
+
+function handleTemplateImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('error', 'Error', 'Image must be less than 10MB');
+        return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        showToast('error', 'Error', 'Please upload an image file');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedImageBase64 = e.target.result;
+
+        // Show preview
+        const preview = document.getElementById('templateImagePreview');
+        const placeholder = document.getElementById('uploadPlaceholder');
+        preview.src = uploadedImageBase64;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+
+        // Enable convert button
+        document.getElementById('convertImageBtn').disabled = false;
+
+        showToast('success', 'Success', 'Image uploaded! Click "Convert to Template" to generate HTML.');
+    };
+    reader.readAsDataURL(file);
+}
+
+async function convertImageToTemplate() {
+    if (!uploadedImageBase64) {
+        showToast('warning', 'Warning', 'Please upload an image first');
+        return;
+    }
+
+    const convertBtn = document.getElementById('convertImageBtn');
+    const progress = document.getElementById('conversionProgress');
+
+    // Show loading state
+    convertBtn.disabled = true;
+    progress.style.display = 'flex';
+
+    try {
+        showToast('info', 'Processing', 'AI is analyzing your design... This may take 30-60 seconds.');
+
+        const response = await fetch(`${API_BASE}/convert-image-to-template`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: uploadedImageBase64 })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.templateHtml) {
+            // Fill in the form with generated content
+            document.getElementById('templateHtml').value = result.templateHtml;
+            document.getElementById('templateCss').value = result.templateCss || '';
+            document.getElementById('templateName').value = result.suggestedName || 'Generated Template';
+            document.getElementById('templateDescription').value = result.description || '';
+            document.getElementById('templateCategory').value = result.suggestedCategory || 'modern';
+
+            if (result.colors) {
+                document.getElementById('templatePrimaryColor').value = result.colors.primary || '#667eea';
+                document.getElementById('templateSecondaryColor').value = result.colors.secondary || '#764ba2';
+                document.getElementById('templateAccentColor').value = result.colors.accent || '#4299e1';
+            }
+
+            // Generate a slug from the name
+            const slug = (result.suggestedName || 'custom')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '');
+            document.getElementById('templateSlug').value = slug;
+
+            // Switch to HTML tab to show the result
+            switchEditorTab('html');
+
+            // Collapse the converter
+            toggleImageConverter();
+
+            showToast('success', 'Success', 'Template generated! Review and edit the HTML code, then save.');
+        } else {
+            throw new Error(result.error || 'Failed to convert image');
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to convert image: ' + error.message);
+    } finally {
+        convertBtn.disabled = false;
+        progress.style.display = 'none';
+    }
+}
+
+// Drag and drop support
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('imageUploadArea');
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('templateImageInput').files = files;
+                handleTemplateImageUpload({ target: { files: files } });
+            }
+        });
+    }
+});
+
+// Reset image converter when modal opens
+function resetImageConverter() {
+    uploadedImageBase64 = null;
+    const preview = document.getElementById('templateImagePreview');
+    const placeholder = document.getElementById('uploadPlaceholder');
+    const convertBtn = document.getElementById('convertImageBtn');
+    const input = document.getElementById('templateImageInput');
+
+    if (preview) preview.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
+    if (convertBtn) convertBtn.disabled = true;
+    if (input) input.value = '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
