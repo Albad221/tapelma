@@ -257,7 +257,7 @@ BEGIN
         VALUES (cv_type_id, 'education', 'Education', 'Formation',
             'What about your education? Share your degrees, institutions, and graduation dates.',
             'Et votre formation ? Partagez vos diplômes, établissements et dates de graduation.',
-            true, 0, 5, false, 3)
+            true, 0, 5, 3)
         ON CONFLICT (document_type_id, slug) DO NOTHING
         RETURNING id INTO edu_group_id;
 
