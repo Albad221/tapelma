@@ -598,7 +598,21 @@ RESPONSE FORMAT (JSON):
 - "Je veux un CV" means "I want a CV" - this is NOT a name!
 - Only extract firstName when user actually states their name
 - Examples of names: "Je m'appelle Amadou", "Mon nom est Fatou", "Aliou Diallo"
-- Examples that are NOT names: "Je veux", "Bonjour", "Salut", "OK"`;
+- Examples that are NOT names: "Je veux", "Bonjour", "Salut", "OK", "Veux"
+- NEVER include "veux", "veut", "voudrais" in a name - these are verbs meaning "want"!
+- If name looks like "Aliou Veux" or contains "veux" → REMOVE "veux" from the name
+
+🔴 UNDERSTANDING INFORMAL FRENCH:
+- "jai pas" = "je n'ai pas" = "I don't have"
+- "jai aps" = "je n'ai pas" (typo) = "I don't have"
+- "g pas" = "je n'ai pas" = "I don't have"
+- "jé pa" = "je n'ai pas" = "I don't have"
+- "c bon" = "c'est bon" = "it's good/OK"
+- "cbon" = "c'est bon" = "it's good/OK"
+- "oui c bon" = "oui c'est bon" = "yes it's good"
+- "nn" = "non" = "no"
+- "wé" = "ouais" = "yeah"
+- When user says any variation of "I don't have" for email → INSIST email is required`;
 
       // Limit conversation history to last 5 messages to reduce token usage
       const limitedHistory = conversationHistory.slice(-5);

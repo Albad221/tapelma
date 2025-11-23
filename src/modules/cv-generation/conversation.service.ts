@@ -206,6 +206,33 @@ export class ConversationService {
         }
 
         session.data = this.mergeData(session.data, aiResponse.extractedData);
+
+        // POST-PROCESSING: Clean up name if it contains "veux" (from "je veux un cv")
+        if (session.data.personalInfo?.firstName) {
+          const badWords = ['veux', 'veut', 'voudrais', 'vouloir', 'want'];
+          let cleanedFirst = session.data.personalInfo.firstName;
+          let cleanedLast = session.data.personalInfo.lastName || '';
+
+          for (const word of badWords) {
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            cleanedFirst = cleanedFirst.replace(regex, '').trim();
+            cleanedLast = cleanedLast.replace(regex, '').trim();
+          }
+
+          // Remove extra spaces
+          cleanedFirst = cleanedFirst.replace(/\s+/g, ' ').trim();
+          cleanedLast = cleanedLast.replace(/\s+/g, ' ').trim();
+
+          if (cleanedFirst !== session.data.personalInfo.firstName) {
+            this.logger.log(`🧹 Cleaned firstName: "${session.data.personalInfo.firstName}" → "${cleanedFirst}"`);
+            session.data.personalInfo.firstName = cleanedFirst;
+          }
+          if (cleanedLast !== session.data.personalInfo.lastName) {
+            this.logger.log(`🧹 Cleaned lastName: "${session.data.personalInfo.lastName}" → "${cleanedLast}"`);
+            session.data.personalInfo.lastName = cleanedLast;
+          }
+        }
+
         this.logger.log(`📤 AFTER MERGE - Updated data: ${JSON.stringify(session.data, null, 2)}`);
 
         // Verify template was saved
