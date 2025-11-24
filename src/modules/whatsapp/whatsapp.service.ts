@@ -11,11 +11,6 @@ export class WhatsAppService {
   private testMessages: Map<string, Array<{text: string, timestamp: Date}>> = new Map();
   private isTestMode: boolean;
 
-  // WhatsApp Cloud API credentials (for PTT voice messages)
-  private readonly whatsappPhoneNumberId: string;
-  private readonly whatsappAccessToken: string;
-  private readonly whatsappApiVersion = 'v18.0';
-
   constructor(
     private configService: ConfigService,
     private httpService: HttpService,
@@ -23,14 +18,9 @@ export class WhatsAppService {
     this.apiEndpoint = this.configService.get<string>('WATI_API_URL') || this.configService.get<string>('WATI_API_ENDPOINT') || '';
     this.accessToken = this.configService.get<string>('WATI_API_TOKEN') || this.configService.get<string>('WATI_ACCESS_TOKEN') || '';
 
-    // WhatsApp Cloud API credentials for PTT voice messages
-    this.whatsappPhoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID') || '';
-    this.whatsappAccessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN') || '';
-
     // Log configuration on startup
     this.logger.log(`WATI API URL configured: ${this.apiEndpoint ? 'YES (' + this.apiEndpoint + ')' : 'NO'}`);
     this.logger.log(`WATI API Token configured: ${this.accessToken ? 'YES (length: ' + this.accessToken.length + ')' : 'NO'}`);
-    this.logger.log(`WhatsApp Cloud API configured: ${this.whatsappPhoneNumberId && this.whatsappAccessToken ? 'YES' : 'NO'}`);
 
     // Enable test mode if WATI credentials are not configured
     this.isTestMode = !this.accessToken || this.accessToken === 'your-wati-access-token';
@@ -574,7 +564,7 @@ export class WhatsAppService {
 
   /**
    * Send an audio message to a WhatsApp user
-   * Tries WhatsApp Cloud API first (for native PTT voice notes), falls back to WATI
+   * Note: WATI doesn't support PTT flag, so audio arrives as file attachment, not voice note
    * @param phoneNumber - Recipient phone number
    * @param audioBuffer - Audio file buffer (OGG Opus format)
    * @param filename - Optional filename
@@ -586,173 +576,44 @@ export class WhatsAppService {
     filename?: string,
   ): Promise<boolean> {
     try {
-      this.logger.log(`Sending voice message to ${phoneNumber} (${audioBuffer.length} bytes)`);
+      this.logger.log(`Sending audio message to ${phoneNumber} (${audioBuffer.length} bytes)`);
 
       // In test mode, just log the action
       if (this.isTestMode) {
-        this.addTestMessage(phoneNumber, `[Voice message: ${filename || 'voice_response.ogg'}]`);
-        this.logger.log(`[TEST MODE] Voice message queued for ${phoneNumber}`);
+        this.addTestMessage(phoneNumber, `[Audio message: ${filename || 'voice_response.ogg'}]`);
+        this.logger.log(`[TEST MODE] Audio message queued for ${phoneNumber}`);
         return true;
       }
 
-      // Try WhatsApp Cloud API first for native PTT voice messages
-      if (this.whatsappPhoneNumberId && this.whatsappAccessToken) {
-        const pttSuccess = await this.sendPttVoiceMessage(phoneNumber, audioBuffer);
-        if (pttSuccess) {
-          return true;
-        }
-        this.logger.warn('WhatsApp Cloud API PTT failed, falling back to WATI...');
-      }
+      const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
 
-      // Fallback to WATI (will send as audio file, not PTT)
-      return await this.sendAudioViaWati(phoneNumber, audioBuffer, filename);
-    } catch (error) {
-      this.logger.error(`Error sending voice message to ${phoneNumber}: ${error.message}`);
-      if (error.response) {
-        this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
-      }
-      return false;
-    }
-  }
-
-  /**
-   * Send audio via WATI (fallback method - sends as audio file, not PTT)
-   */
-  private async sendAudioViaWati(
-    phoneNumber: string,
-    audioBuffer: Buffer,
-    filename?: string,
-  ): Promise<boolean> {
-    const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
-
-    const arrayBuffer = audioBuffer.buffer.slice(
-      audioBuffer.byteOffset,
-      audioBuffer.byteOffset + audioBuffer.byteLength,
-    ) as ArrayBuffer;
-
-    const blob = new Blob([arrayBuffer], { type: 'audio/ogg; codecs=opus' });
-    const audioFilename = filename || `voice_${Date.now()}.ogg`;
-
-    const formData = new FormData();
-    formData.append('file', blob, audioFilename);
-
-    const response = await firstValueFrom(
-      this.httpService.post(url, formData, {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      }),
-    );
-
-    this.logger.log(`Voice message sent via WATI to ${phoneNumber}: ${JSON.stringify(response.data)}`);
-    return response.data.result === true || response.data.ok === true;
-  }
-
-  /**
-   * Send PTT voice message via WhatsApp Cloud API
-   * This sends audio as a native WhatsApp voice note (green bubble with waveform)
-   * @param phoneNumber - Recipient phone number (without + prefix)
-   * @param audioBuffer - Audio buffer in OGG Opus format
-   * @returns Success status
-   */
-  private async sendPttVoiceMessage(
-    phoneNumber: string,
-    audioBuffer: Buffer,
-  ): Promise<boolean> {
-    try {
-      this.logger.log(`Uploading audio to WhatsApp Cloud API for PTT...`);
-
-      // Step 1: Upload the audio file to get a media ID
-      const mediaId = await this.uploadMediaToWhatsApp(audioBuffer, 'audio/ogg; codecs=opus');
-
-      if (!mediaId) {
-        this.logger.error('Failed to upload audio to WhatsApp Cloud API');
-        return false;
-      }
-
-      this.logger.log(`Audio uploaded, media ID: ${mediaId}`);
-
-      // Step 2: Send the voice message with voice: true flag
-      const messageUrl = `https://graph.facebook.com/${this.whatsappApiVersion}/${this.whatsappPhoneNumberId}/messages`;
-
-      const payload = {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: phoneNumber,
-        type: 'audio',
-        audio: {
-          id: mediaId,
-          voice: true,  // This makes it a PTT voice note!
-        },
-      };
-
-      const response = await firstValueFrom(
-        this.httpService.post(messageUrl, payload, {
-          headers: {
-            Authorization: `Bearer ${this.whatsappAccessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }),
-      );
-
-      this.logger.log(`PTT voice message sent via WhatsApp Cloud API: ${JSON.stringify(response.data)}`);
-      return true;
-    } catch (error) {
-      this.logger.error(`Error sending PTT via WhatsApp Cloud API: ${error.message}`);
-      if (error.response) {
-        this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
-      }
-      return false;
-    }
-  }
-
-  /**
-   * Upload media to WhatsApp Cloud API
-   * @param buffer - File buffer
-   * @param mimeType - MIME type of the file
-   * @returns Media ID if successful, null otherwise
-   */
-  private async uploadMediaToWhatsApp(
-    buffer: Buffer,
-    mimeType: string,
-  ): Promise<string | null> {
-    try {
-      const uploadUrl = `https://graph.facebook.com/${this.whatsappApiVersion}/${this.whatsappPhoneNumberId}/media`;
-
-      const arrayBuffer = buffer.buffer.slice(
-        buffer.byteOffset,
-        buffer.byteOffset + buffer.byteLength,
+      const arrayBuffer = audioBuffer.buffer.slice(
+        audioBuffer.byteOffset,
+        audioBuffer.byteOffset + audioBuffer.byteLength,
       ) as ArrayBuffer;
 
-      const blob = new Blob([arrayBuffer], { type: mimeType });
+      const blob = new Blob([arrayBuffer], { type: 'audio/ogg; codecs=opus' });
+      const audioFilename = filename || `voice_${Date.now()}.ogg`;
 
       const formData = new FormData();
-      formData.append('file', blob, `voice_${Date.now()}.ogg`);
-      formData.append('type', mimeType);
-      formData.append('messaging_product', 'whatsapp');
+      formData.append('file', blob, audioFilename);
 
       const response = await firstValueFrom(
-        this.httpService.post(uploadUrl, formData, {
+        this.httpService.post(url, formData, {
           headers: {
-            Authorization: `Bearer ${this.whatsappAccessToken}`,
+            Authorization: `Bearer ${this.accessToken}`,
           },
         }),
       );
 
-      return response.data.id || null;
+      this.logger.log(`Audio message sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
+      return response.data.result === true || response.data.ok === true;
     } catch (error) {
-      this.logger.error(`Error uploading media to WhatsApp: ${error.message}`);
+      this.logger.error(`Error sending audio message to ${phoneNumber}: ${error.message}`);
       if (error.response) {
-        this.logger.error(`Upload response: ${JSON.stringify(error.response.data)}`);
+        this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
       }
-      return null;
+      return false;
     }
-  }
-
-  /**
-   * Check if WhatsApp Cloud API is configured for PTT voice messages
-   */
-  isWhatsAppCloudApiConfigured(): boolean {
-    return !!(this.whatsappPhoneNumberId && this.whatsappAccessToken);
   }
 }
