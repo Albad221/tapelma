@@ -86,13 +86,26 @@ export class StepHandlerService {
    * Check if user's message indicates they want to skip
    */
   isSkipMessage(message: string): boolean {
-    const skipPatterns = [
-      'non', 'no', 'skip', 'passer', 'aucun', 'aucune', 'pas de',
-      'je n\'ai pas', 'je nai pas', 'rien', 'nothing', 'none',
-      'pas d\'', 'pas encore', 'not yet', 'later', 'plus tard'
-    ];
     const lowerMsg = message.toLowerCase().trim();
-    return skipPatterns.some(pattern => lowerMsg.includes(pattern));
+
+    // Exact matches or word boundaries for short words like "non", "no"
+    const exactSkipPatterns = ['non', 'no', 'none', 'rien', 'nothing'];
+    for (const pattern of exactSkipPatterns) {
+      // Check if it's the entire message or surrounded by word boundaries
+      const regex = new RegExp(`(^|\\s|[.,!?])${pattern}($|\\s|[.,!?])`, 'i');
+      if (regex.test(lowerMsg)) {
+        return true;
+      }
+    }
+
+    // Phrase patterns that indicate skip intent
+    const phraseSkipPatterns = [
+      'skip', 'passer', 'aucun', 'aucune', 'pas de ',
+      'je n\'ai pas', 'je nai pas', 'j\'ai pas', 'jai pas',
+      'pas d\'', 'pas encore', 'not yet', 'later', 'plus tard',
+      'je passe', 'on passe', 'sauter', 'ignorer'
+    ];
+    return phraseSkipPatterns.some(pattern => lowerMsg.includes(pattern));
   }
 
   /**
