@@ -336,14 +336,22 @@ export class ConversationService {
         data: session.data,
       });
 
-      // Send AI response to user
-      await this.whatsappService.sendTextMessage(phoneNumber, aiResponse.response);
+      // Send AI response to user (with TTS if voice mode is enabled)
+      if (session.data.useVoiceResponse && this.elevenLabsService.isConfigured()) {
+        // Send both text and audio response
+        await this.sendAudioResponse(phoneNumber, aiResponse.response, true);
+        // Reset voice mode after responding (user can trigger it again by sending voice)
+        session.data.useVoiceResponse = false;
+        await this.userService.updateSession(session.id, { data: session.data });
+      } else {
+        await this.whatsappService.sendTextMessage(phoneNumber, aiResponse.response);
+      }
 
       // Log outbound message
       await this.userService.logMessage({
         userId: user.id,
         direction: 'outbound',
-        messageType: 'text',
+        messageType: session.data.useVoiceResponse ? 'audio' : 'text',
         content: aiResponse.response,
       });
 
@@ -1885,6 +1893,10 @@ export class ConversationService {
         messageType: 'audio',
         content: `[Voice message transcribed]: ${transcribedText}`,
       });
+
+      // Mark session as using voice mode so responses are sent as audio
+      session.data.useVoiceResponse = true;
+      await this.userService.updateSession(session.id, { data: session.data });
 
       // Process the transcribed text as a regular message
       await this.handleUserMessage(phoneNumber, transcribedText);

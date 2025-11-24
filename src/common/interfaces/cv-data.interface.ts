@@ -94,6 +94,7 @@ export interface CVData {
   certifications: Certification[];
   selectedTemplate?: string;
   additionalSections?: Record<string, any>;
+  useVoiceResponse?: boolean; // If true, respond with TTS audio when user sends voice messages
 }
 
 export interface ConversationSession {
