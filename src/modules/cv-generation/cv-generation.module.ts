@@ -10,6 +10,7 @@ import { PDFModule } from '../pdf/pdf.module';
 import { StorageModule } from '../storage/storage.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { AdminModule } from '../admin/admin.module';
+import { ElevenLabsModule } from '../elevenlabs/elevenlabs.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AdminModule } from '../admin/admin.module';
     PDFModule,
     StorageModule,
     AdminModule,
+    ElevenLabsModule,
     forwardRef(() => WhatsAppModule),
   ],
   controllers: [PictureTestController],

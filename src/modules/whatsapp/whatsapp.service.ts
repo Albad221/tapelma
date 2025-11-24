@@ -395,6 +395,21 @@ export class WhatsAppService {
         };
       }
 
+      // Handle audio/voice messages
+      if (payload.waId && (payload.type === 'audio' || payload.type === 'voice' || payload.type === 'ptt')) {
+        this.logger.log(`🎤 AUDIO DETECTED - mediaId/data: ${payload.data || payload.mediaId}, sourceUrl: ${payload.sourceUrl || payload.mediaUrl}`);
+        return {
+          from: payload.waId,
+          text: '',
+          messageId: payload.id || payload.whatsappMessageId || '',
+          messageType: 'audio',
+          timestamp: parseInt(payload.timestamp) || Date.now(),
+          type: 'audio',
+          mediaId: payload.data || payload.mediaId,
+          mediaUrl: payload.sourceUrl || payload.mediaUrl,
+        };
+      }
+
       // Handle button/list responses
       if (payload.waId && (payload.data || payload.listReply || payload.buttonReply)) {
         const responseData = payload.listReply || payload.buttonReply || payload.data;
@@ -485,6 +500,118 @@ export class WhatsAppService {
     } catch (error) {
       this.logger.error(`Error downloading image: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Download an audio file from WhatsApp media URL
+   * @param mediaId - WhatsApp media ID
+   * @param mediaUrl - Direct media URL if available
+   * @returns Buffer containing the audio data
+   */
+  async downloadAudio(mediaId: string, mediaUrl?: string): Promise<Buffer> {
+    try {
+      this.logger.log(`Downloading audio with media ID: ${mediaId}, mediaUrl: ${mediaUrl}`);
+
+      const accessToken = this.configService.get<string>('WATI_API_TOKEN') || this.configService.get<string>('WATI_ACCESS_TOKEN');
+      const endpoint = this.configService.get<string>('WATI_API_URL') || this.configService.get<string>('WATI_API_ENDPOINT');
+
+      // Determine the download URL
+      let downloadUrl: string;
+
+      // If mediaId is already a full URL
+      if (mediaId && mediaId.startsWith('http')) {
+        downloadUrl = mediaId;
+        this.logger.log(`Using mediaId as direct URL: ${downloadUrl}`);
+      } else if (mediaUrl && mediaUrl.startsWith('http')) {
+        downloadUrl = mediaUrl;
+        this.logger.log(`Using mediaUrl: ${downloadUrl}`);
+      } else {
+        // Fetch media URL from WATI API using media ID
+        this.logger.log(`Fetching audio info from WATI API for mediaId: ${mediaId}`);
+        const mediaInfoResponse = await this.httpService.axiosRef.get(
+          `${endpoint}/api/v1/getMedia/${mediaId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+
+        downloadUrl = mediaInfoResponse.data.url || mediaInfoResponse.data.media_url;
+
+        if (!downloadUrl) {
+          throw new Error('No download URL found for audio media');
+        }
+      }
+
+      // Download the actual media file
+      this.logger.log(`Downloading audio from: ${downloadUrl}`);
+      const audioResponse = await this.httpService.axiosRef.get(downloadUrl, {
+        responseType: 'arraybuffer',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      this.logger.log(`Audio downloaded successfully (${audioResponse.data.byteLength} bytes)`);
+      return Buffer.from(audioResponse.data);
+    } catch (error) {
+      this.logger.error(`Error downloading audio: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Send an audio message to a WhatsApp user
+   * @param phoneNumber - Recipient phone number
+   * @param audioBuffer - Audio file buffer (MP3 format recommended)
+   * @param filename - Optional filename
+   * @returns Success status
+   */
+  async sendAudioMessage(
+    phoneNumber: string,
+    audioBuffer: Buffer,
+    filename?: string,
+  ): Promise<boolean> {
+    try {
+      this.logger.log(`Sending audio message to ${phoneNumber} (${audioBuffer.length} bytes)`);
+
+      // In test mode, just log the action
+      if (this.isTestMode) {
+        this.addTestMessage(phoneNumber, `[Audio message: ${filename || 'voice_response.mp3'}]`);
+        this.logger.log(`[TEST MODE] Audio message queued for ${phoneNumber}`);
+        return true;
+      }
+
+      const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
+
+      // Create a Blob from the buffer for FormData
+      const arrayBuffer = audioBuffer.buffer.slice(
+        audioBuffer.byteOffset,
+        audioBuffer.byteOffset + audioBuffer.byteLength,
+      ) as ArrayBuffer;
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+
+      const formData = new FormData();
+      formData.append('file', blob, filename || 'voice_response.mp3');
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, formData, {
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+        }),
+      );
+
+      this.logger.log(`Audio sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
+      return response.data.result === true || response.data.ok === true;
+    } catch (error) {
+      this.logger.error(`Error sending audio to ${phoneNumber}: ${error.message}`);
+      if (error.response) {
+        this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
+      }
+      return false;
     }
   }
 }

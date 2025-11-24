@@ -6,6 +6,7 @@ import { GeminiService } from '../gemini/gemini.service';
 import { PDFService } from '../pdf/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { AdminService } from '../admin/admin.service';
+import { ElevenLabsService } from '../elevenlabs/elevenlabs.service';
 import { StepHandlerService } from './step-handler.service';
 import {
   ConversationStep,
@@ -28,6 +29,7 @@ export class ConversationService {
     private pdfService: PDFService,
     private storageService: StorageService,
     private adminService: AdminService,
+    private elevenLabsService: ElevenLabsService,
     private stepHandler: StepHandlerService,
   ) {}
 
@@ -1806,6 +1808,135 @@ export class ConversationService {
         phoneNumber,
         'Sorry, an error occurred while processing your image. Please try again.',
       );
+    }
+  }
+
+  /**
+   * Handle audio/voice messages using ElevenLabs ASR for transcription
+   * @param phoneNumber - User's phone number
+   * @param mediaId - WhatsApp media ID for the audio
+   * @param mediaUrl - Optional direct URL to the audio
+   */
+  async handleAudioMessage(
+    phoneNumber: string,
+    mediaId: string,
+    mediaUrl?: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(`🎤 Processing audio message from ${phoneNumber}, mediaId: ${mediaId}`);
+
+      // Check if ElevenLabs is configured
+      if (!this.elevenLabsService.isConfigured()) {
+        this.logger.warn('ElevenLabs not configured - cannot process audio message');
+        await this.whatsappService.sendTextMessage(
+          phoneNumber,
+          "Désolé, les messages vocaux ne sont pas encore supportés. Veuillez envoyer un message texte. / Sorry, voice messages are not yet supported. Please send a text message.",
+        );
+        return;
+      }
+
+      const user = await this.userService.findOrCreateUser(phoneNumber);
+      const session = await this.userService.getActiveSession(user.id);
+
+      if (!session) {
+        await this.whatsappService.sendTextMessage(
+          phoneNumber,
+          "Désolé, je n'ai pas trouvé de session active. Envoyez 'bonjour' pour commencer. / Sorry, no active session found. Send 'hello' to start.",
+        );
+        return;
+      }
+
+      // Send acknowledgement
+      await this.whatsappService.sendTextMessage(
+        phoneNumber,
+        session.language === 'fr'
+          ? '🎤 Transcription de votre message vocal en cours...'
+          : '🎤 Transcribing your voice message...',
+      );
+
+      // Download the audio from WhatsApp
+      this.logger.log('Downloading audio from WhatsApp...');
+      const audioBuffer = await this.whatsappService.downloadAudio(mediaId, mediaUrl);
+      this.logger.log(`Audio downloaded: ${audioBuffer.length} bytes`);
+
+      // Transcribe using ElevenLabs ASR
+      const languageCode = this.elevenLabsService.mapLanguageCode(session.language);
+      this.logger.log(`Transcribing audio with ElevenLabs (language: ${languageCode})...`);
+
+      const transcribedText = await this.elevenLabsService.transcribeAudio(audioBuffer, languageCode);
+
+      if (!transcribedText || transcribedText.trim() === '') {
+        this.logger.warn('No text transcribed from audio');
+        await this.whatsappService.sendTextMessage(
+          phoneNumber,
+          session.language === 'fr'
+            ? "❌ Je n'ai pas pu comprendre votre message vocal. Veuillez réessayer ou envoyer un message texte."
+            : "❌ I couldn't understand your voice message. Please try again or send a text message.",
+        );
+        return;
+      }
+
+      this.logger.log(`🎤 Transcribed text: "${transcribedText}"`);
+
+      // Log the audio message (store the transcription)
+      await this.userService.logMessage({
+        userId: user.id,
+        direction: 'inbound',
+        messageType: 'audio',
+        content: `[Voice message transcribed]: ${transcribedText}`,
+      });
+
+      // Process the transcribed text as a regular message
+      await this.handleUserMessage(phoneNumber, transcribedText);
+
+    } catch (error) {
+      this.logger.error(`Error processing audio message: ${error.message}`, error.stack);
+      await this.whatsappService.sendTextMessage(
+        phoneNumber,
+        "Désolé, une erreur s'est produite lors du traitement de votre message vocal. Veuillez réessayer. / Sorry, an error occurred while processing your voice message. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Send a text response as audio using ElevenLabs TTS
+   * @param phoneNumber - User's phone number
+   * @param text - Text to convert to speech
+   * @param alsoSendText - Whether to also send the text message (default: true)
+   */
+  async sendAudioResponse(
+    phoneNumber: string,
+    text: string,
+    alsoSendText: boolean = true,
+  ): Promise<boolean> {
+    try {
+      // Always send text message as fallback
+      if (alsoSendText) {
+        await this.whatsappService.sendTextMessage(phoneNumber, text);
+      }
+
+      // Check if ElevenLabs is configured
+      if (!this.elevenLabsService.isConfigured()) {
+        this.logger.warn('ElevenLabs not configured - skipping TTS');
+        return false;
+      }
+
+      // Convert text to speech
+      this.logger.log(`🔊 Converting response to speech: "${text.substring(0, 50)}..."`);
+      const audioBuffer = await this.elevenLabsService.textToSpeech(text);
+
+      // Send audio message
+      await this.whatsappService.sendAudioMessage(
+        phoneNumber,
+        audioBuffer,
+        `response_${Date.now()}.mp3`,
+      );
+
+      this.logger.log('🔊 Audio response sent successfully');
+      return true;
+    } catch (error) {
+      this.logger.error(`Error sending audio response: ${error.message}`, error.stack);
+      return false;
     }
   }
 }

@@ -128,16 +128,28 @@ export class WhatsAppController {
             await this.whatsappService.markMessageAsRead(message.messageId);
           }
 
+          // Debug: Log message type and mediaId
+          this.logger.log(`📨 Message routing - type: ${message.type}, mediaId: ${message.mediaId}, text: "${message.text?.substring(0, 30) || ''}"`);
+
           // Check if message contains an image
           if (message.type === 'image' && message.mediaId) {
-            this.logger.log('Image message received, processing...');
+            this.logger.log('🖼️ Image message received, processing...');
             await this.conversationService.handleImageMessage(
+              message.from,
+              message.mediaId,
+              message.mediaUrl,
+            );
+          } else if (message.type === 'audio' && message.mediaId) {
+            // Handle audio/voice messages via ElevenLabs ASR
+            this.logger.log('🎤 Audio message received, processing with ElevenLabs...');
+            await this.conversationService.handleAudioMessage(
               message.from,
               message.mediaId,
               message.mediaUrl,
             );
           } else {
             // Process text message through conversation flow
+            this.logger.log('💬 Text message received, processing...');
             await this.conversationService.handleUserMessage(
               message.from,
               message.text,
