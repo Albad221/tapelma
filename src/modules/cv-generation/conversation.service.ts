@@ -1937,11 +1937,11 @@ export class ConversationService {
       this.logger.log(`🔊 Converting response to speech: "${text.substring(0, 50)}..."`);
       const audioBuffer = await this.elevenLabsService.textToSpeech(text);
 
-      // Send audio message (using .ogg extension for WhatsApp voice note compatibility)
+      // Send audio message (using .opus extension for WhatsApp voice note compatibility)
       await this.whatsappService.sendAudioMessage(
         phoneNumber,
         audioBuffer,
-        `voice_${Date.now()}.ogg`,
+        `PTT-${Date.now()}.opus`,
       );
 
       this.logger.log('🔊 Audio response sent successfully');

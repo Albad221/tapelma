@@ -575,28 +575,27 @@ export class WhatsAppService {
     filename?: string,
   ): Promise<boolean> {
     try {
-      this.logger.log(`Sending audio message to ${phoneNumber} (${audioBuffer.length} bytes)`);
+      this.logger.log(`Sending voice message to ${phoneNumber} (${audioBuffer.length} bytes)`);
 
       // In test mode, just log the action
       if (this.isTestMode) {
-        this.addTestMessage(phoneNumber, `[Audio message: ${filename || 'voice_response.ogg'}]`);
-        this.logger.log(`[TEST MODE] Audio message queued for ${phoneNumber}`);
+        this.addTestMessage(phoneNumber, `[Voice message: ${filename || 'voice_response.ogg'}]`);
+        this.logger.log(`[TEST MODE] Voice message queued for ${phoneNumber}`);
         return true;
       }
 
       const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
 
       // Create a Blob from the buffer for FormData
-      // Use audio/ogg mime type for WhatsApp voice message compatibility
       const arrayBuffer = audioBuffer.buffer.slice(
         audioBuffer.byteOffset,
         audioBuffer.byteOffset + audioBuffer.byteLength,
       ) as ArrayBuffer;
 
-      // WhatsApp prefers OGG Opus for voice messages, but also accepts MP3
-      // Using .ogg extension helps WhatsApp treat it as a voice note
-      const blob = new Blob([arrayBuffer], { type: 'audio/ogg' });
-      const audioFilename = filename || `voice_${Date.now()}.ogg`;
+      // Use audio/opus MIME type for WhatsApp PTT voice messages
+      // .opus extension may help WhatsApp identify it as a voice note
+      const blob = new Blob([arrayBuffer], { type: 'audio/opus' });
+      const audioFilename = filename || `PTT-${Date.now()}.opus`;
 
       const formData = new FormData();
       formData.append('file', blob, audioFilename);
@@ -609,10 +608,10 @@ export class WhatsAppService {
         }),
       );
 
-      this.logger.log(`Audio sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
+      this.logger.log(`Voice message sent to ${phoneNumber}: ${JSON.stringify(response.data)}`);
       return response.data.result === true || response.data.ok === true;
     } catch (error) {
-      this.logger.error(`Error sending audio to ${phoneNumber}: ${error.message}`);
+      this.logger.error(`Error sending voice message to ${phoneNumber}: ${error.message}`);
       if (error.response) {
         this.logger.error(`Response: ${JSON.stringify(error.response.data)}`);
       }
