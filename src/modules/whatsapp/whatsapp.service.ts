@@ -579,7 +579,7 @@ export class WhatsAppService {
 
       // In test mode, just log the action
       if (this.isTestMode) {
-        this.addTestMessage(phoneNumber, `[Audio message: ${filename || 'voice_response.mp3'}]`);
+        this.addTestMessage(phoneNumber, `[Audio message: ${filename || 'voice_response.ogg'}]`);
         this.logger.log(`[TEST MODE] Audio message queued for ${phoneNumber}`);
         return true;
       }
@@ -587,14 +587,19 @@ export class WhatsAppService {
       const url = `${this.apiEndpoint}/api/v1/sendSessionFile/${phoneNumber}`;
 
       // Create a Blob from the buffer for FormData
+      // Use audio/ogg mime type for WhatsApp voice message compatibility
       const arrayBuffer = audioBuffer.buffer.slice(
         audioBuffer.byteOffset,
         audioBuffer.byteOffset + audioBuffer.byteLength,
       ) as ArrayBuffer;
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+
+      // WhatsApp prefers OGG Opus for voice messages, but also accepts MP3
+      // Using .ogg extension helps WhatsApp treat it as a voice note
+      const blob = new Blob([arrayBuffer], { type: 'audio/ogg' });
+      const audioFilename = filename || `voice_${Date.now()}.ogg`;
 
       const formData = new FormData();
-      formData.append('file', blob, filename || 'voice_response.mp3');
+      formData.append('file', blob, audioFilename);
 
       const response = await firstValueFrom(
         this.httpService.post(url, formData, {

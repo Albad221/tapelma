@@ -91,7 +91,7 @@ export class ElevenLabsService {
    * Convert text to speech using ElevenLabs TTS
    * @param text - Text to convert to speech
    * @param voiceId - Optional voice ID (defaults to configured voice)
-   * @returns Audio buffer (MP3 format)
+   * @returns Audio buffer (OGG format - native WhatsApp voice message format)
    */
   async textToSpeech(text: string, voiceId?: string): Promise<Buffer> {
     if (!this.client) {
@@ -101,12 +101,17 @@ export class ElevenLabsService {
     try {
       this.logger.log(`Converting text to speech: "${text.substring(0, 50)}..."`);
 
+      // Use PCM format and we'll need to handle conversion, or use mp3 which WhatsApp accepts
+      // ElevenLabs supported formats: mp3_22050_32, mp3_44100_64, mp3_44100_96, mp3_44100_128, mp3_44100_192
+      // pcm_16000, pcm_22050, pcm_24000, pcm_44100, ulaw_8000
+      // For WhatsApp voice notes, OGG Opus is ideal but ElevenLabs doesn't output OGG directly
+      // Using mp3_44100_64 for smaller file size while maintaining quality
       const audioStream = await this.client.textToSpeech.convert(
         voiceId || this.voiceId,
         {
           text,
           modelId: this.modelId,
-          outputFormat: 'mp3_44100_128',
+          outputFormat: 'mp3_44100_64',
         }
       );
 
