@@ -11,9 +11,8 @@ import { Readable } from 'stream';
 export class ElevenLabsService {
   private readonly logger = new Logger(ElevenLabsService.name);
   private client: ElevenLabsClient;
-  private voiceId: string;
+  private readonly voiceId: string;
   private readonly modelId: string;
-  private readonly targetVoiceName = 'Awa'; // Voice to use for TTS
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('ELEVENLABS_API_KEY');
@@ -23,39 +22,13 @@ export class ElevenLabsService {
     } else {
       this.client = new ElevenLabsClient({ apiKey });
       this.logger.log('ElevenLabs client initialized');
-      // Find the target voice on startup
-      this.initializeVoice();
     }
 
-    // Default fallback voice ID (Rachel) in case Awa is not found
-    this.voiceId = '21m00Tcm4TlvDq8ikWAM';
+    // Awa voice - custom voice from ElevenLabs account
+    this.voiceId = 'W7iChuY7vlfNmLvBhjjG';
 
     // Model: eleven_multilingual_v2 supports 29 languages including French, English, Spanish
     this.modelId = 'eleven_multilingual_v2';
-  }
-
-  /**
-   * Find and set the target voice by name
-   */
-  private async initializeVoice(): Promise<void> {
-    try {
-      const voices = await this.getVoices();
-      const targetVoice = voices.find(
-        (v: any) => v.name?.toLowerCase() === this.targetVoiceName.toLowerCase()
-      );
-
-      if (targetVoice) {
-        this.voiceId = targetVoice.voice_id;
-        this.logger.log(`Found voice "${this.targetVoiceName}" with ID: ${this.voiceId}`);
-      } else {
-        this.logger.warn(`Voice "${this.targetVoiceName}" not found, using default voice`);
-        // Log available voices for debugging
-        const voiceNames = voices.map((v: any) => v.name).join(', ');
-        this.logger.log(`Available voices: ${voiceNames}`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to initialize voice: ${error.message}`);
-    }
   }
 
   /**

@@ -1854,14 +1854,6 @@ export class ConversationService {
         return;
       }
 
-      // Send acknowledgement
-      await this.whatsappService.sendTextMessage(
-        phoneNumber,
-        session.language === 'fr'
-          ? '🎤 Transcription de votre message vocal en cours...'
-          : '🎤 Transcribing your voice message...',
-      );
-
       // Download the audio from WhatsApp
       this.logger.log('Downloading audio from WhatsApp...');
       const audioBuffer = await this.whatsappService.downloadAudio(mediaId, mediaUrl);
