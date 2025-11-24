@@ -11,8 +11,9 @@ import { Readable } from 'stream';
 export class ElevenLabsService {
   private readonly logger = new Logger(ElevenLabsService.name);
   private client: ElevenLabsClient;
-  private readonly voiceId: string;
+  private voiceId: string;
   private readonly modelId: string;
+  private readonly targetVoiceName = 'Awa'; // Voice to use for TTS
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('ELEVENLABS_API_KEY');
@@ -22,25 +23,39 @@ export class ElevenLabsService {
     } else {
       this.client = new ElevenLabsClient({ apiKey });
       this.logger.log('ElevenLabs client initialized');
+      // Find the target voice on startup
+      this.initializeVoice();
     }
 
-    // Default voice: "Rachel" - a warm, friendly female voice good for conversational AI
-    // Other popular voices:
-    // - 21m00Tcm4TlvDq8ikWAM = Rachel (warm female)
-    // - EXAVITQu4vr4xnSDxMaL = Bella (soft female)
-    // - ErXwobaYiN019PkySvjV = Antoni (friendly male)
-    // - VR6AewLTigWG4xSOukaG = Arnold (deep male)
-    // - pNInz6obpgDQGcFmaJgB = Adam (deep male, American)
-    // - yoZ06aMxZJJ28mfd3POQ = Sam (young male)
+    // Default fallback voice ID (Rachel) in case Awa is not found
     this.voiceId = '21m00Tcm4TlvDq8ikWAM';
 
     // Model: eleven_multilingual_v2 supports 29 languages including French, English, Spanish
-    // Other models:
-    // - eleven_monolingual_v1 = English only, faster
-    // - eleven_multilingual_v1 = Older multilingual
-    // - eleven_multilingual_v2 = Best quality multilingual (recommended)
-    // - eleven_turbo_v2 = Faster, slightly lower quality
     this.modelId = 'eleven_multilingual_v2';
+  }
+
+  /**
+   * Find and set the target voice by name
+   */
+  private async initializeVoice(): Promise<void> {
+    try {
+      const voices = await this.getVoices();
+      const targetVoice = voices.find(
+        (v: any) => v.name?.toLowerCase() === this.targetVoiceName.toLowerCase()
+      );
+
+      if (targetVoice) {
+        this.voiceId = targetVoice.voice_id;
+        this.logger.log(`Found voice "${this.targetVoiceName}" with ID: ${this.voiceId}`);
+      } else {
+        this.logger.warn(`Voice "${this.targetVoiceName}" not found, using default voice`);
+        // Log available voices for debugging
+        const voiceNames = voices.map((v: any) => v.name).join(', ');
+        this.logger.log(`Available voices: ${voiceNames}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to initialize voice: ${error.message}`);
+    }
   }
 
   /**
