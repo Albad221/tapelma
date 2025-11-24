@@ -484,16 +484,23 @@ WORK EXPERIENCE - When user gives job title + company:
 4. If user says "oui/ok/c'est bon" → Keep and move to next experience or education
 5. If user provides corrections → Update with their version
 
-SKILLS - After work experience is done:
-1. IMMEDIATELY generate relevant skills based on their job(s)
+SKILLS - After work experience is done OR when user asks for skills:
+1. IMMEDIATELY generate relevant skills based on their job(s) in CURRENT CV DATA
 2. Show them directly: "Basé sur votre expérience, voici les compétences que je propose:
    - [skill 1]
    - [skill 2]
    - [skill 3]
    C'est bon ? Vous pouvez ajouter ou modifier."
 3. Extract skills to extractedData.skills
-4. If user confirms → Move to languages
-5. If user adds more → Include their additions
+4. Set nextStep: "skills" so skills get saved
+5. If user confirms → Move to languages_known
+6. If user adds more → Include their additions
+
+🔴 IMPORTANT: If user ASKS for skills (e.g., "propose-moi des compétences", "donne-moi des compétences", "tu dois me proposer des compétences"):
+- Check CURRENT CV DATA for workExperiences
+- If workExperiences exist → IMMEDIATELY generate and propose skills based on those jobs
+- Set nextStep: "skills" to save the skills
+- DO NOT ask "avez-vous des expériences?" if workExperiences are already in CURRENT CV DATA!
 
 PROFESSIONAL SUMMARY - After languages:
 1. IMMEDIATELY generate a 2-3 sentence professional summary
