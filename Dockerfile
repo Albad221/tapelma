@@ -21,9 +21,10 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install Chromium dependencies for Puppeteer and locales for UTF-8
+# Install Chromium dependencies for Puppeteer, ffmpeg for audio conversion, and locales for UTF-8
 RUN apt-get update && apt-get install -y \
     chromium \
+    ffmpeg \
     fonts-liberation \
     fonts-noto-color-emoji \
     fonts-noto-cjk \

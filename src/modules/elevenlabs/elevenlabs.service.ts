@@ -4,6 +4,8 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import ffmpeg from 'fluent-ffmpeg';
+import { Readable } from 'stream';
 
 @Injectable()
 export class ElevenLabsService {
@@ -91,7 +93,7 @@ export class ElevenLabsService {
    * Convert text to speech using ElevenLabs TTS
    * @param text - Text to convert to speech
    * @param voiceId - Optional voice ID (defaults to configured voice)
-   * @returns Audio buffer (OGG format - native WhatsApp voice message format)
+   * @returns Audio buffer (OGG Opus format - native WhatsApp voice message format)
    */
   async textToSpeech(text: string, voiceId?: string): Promise<Buffer> {
     if (!this.client) {
@@ -101,17 +103,13 @@ export class ElevenLabsService {
     try {
       this.logger.log(`Converting text to speech: "${text.substring(0, 50)}..."`);
 
-      // Use PCM format and we'll need to handle conversion, or use mp3 which WhatsApp accepts
-      // ElevenLabs supported formats: mp3_22050_32, mp3_44100_64, mp3_44100_96, mp3_44100_128, mp3_44100_192
-      // pcm_16000, pcm_22050, pcm_24000, pcm_44100, ulaw_8000
-      // For WhatsApp voice notes, OGG Opus is ideal but ElevenLabs doesn't output OGG directly
-      // Using mp3_44100_64 for smaller file size while maintaining quality
+      // Get MP3 from ElevenLabs
       const audioStream = await this.client.textToSpeech.convert(
         voiceId || this.voiceId,
         {
           text,
           modelId: this.modelId,
-          outputFormat: 'mp3_44100_64',
+          outputFormat: 'mp3_44100_128',
         }
       );
 
@@ -120,14 +118,67 @@ export class ElevenLabsService {
       for await (const chunk of audioStream) {
         chunks.push(Buffer.from(chunk));
       }
-      const audioBuffer = Buffer.concat(chunks);
+      const mp3Buffer = Buffer.concat(chunks);
+      this.logger.log(`TTS MP3 generated (${mp3Buffer.length} bytes), converting to OGG Opus...`);
 
-      this.logger.log(`TTS conversion successful (${audioBuffer.length} bytes)`);
-      return audioBuffer;
+      // Convert MP3 to OGG Opus using ffmpeg
+      const oggBuffer = await this.convertMp3ToOggOpus(mp3Buffer);
+      this.logger.log(`TTS conversion successful - OGG Opus (${oggBuffer.length} bytes)`);
+
+      return oggBuffer;
     } catch (error) {
       this.logger.error(`Failed to convert text to speech: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * Convert MP3 buffer to OGG Opus format (WhatsApp voice message format)
+   */
+  private async convertMp3ToOggOpus(mp3Buffer: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const tempDir = os.tmpdir();
+      const inputPath = path.join(tempDir, `input_${Date.now()}.mp3`);
+      const outputPath = path.join(tempDir, `output_${Date.now()}.ogg`);
+
+      // Write MP3 to temp file
+      fs.writeFileSync(inputPath, mp3Buffer);
+
+      // Convert using ffmpeg
+      ffmpeg(inputPath)
+        .audioCodec('libopus')
+        .audioChannels(1)
+        .audioFrequency(48000)
+        .audioBitrate('64k')
+        .format('ogg')
+        .on('end', () => {
+          // Read the output file
+          const oggBuffer = fs.readFileSync(outputPath);
+
+          // Clean up temp files
+          try {
+            fs.unlinkSync(inputPath);
+            fs.unlinkSync(outputPath);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+
+          resolve(oggBuffer);
+        })
+        .on('error', (err) => {
+          // Clean up temp files on error
+          try {
+            if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+
+          this.logger.error(`FFmpeg conversion error: ${err.message}`);
+          reject(err);
+        })
+        .save(outputPath);
+    });
   }
 
   /**
